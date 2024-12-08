@@ -1,3 +1,8 @@
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import project from "./project";
+import box from "./box";
+
 const room = pgTable("room", {
   id: uuid("id").defaultRandom().primaryKey(),
   projectId: uuid("project_id")
