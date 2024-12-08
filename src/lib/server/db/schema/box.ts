@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import room from "./room";
 
@@ -10,6 +10,8 @@ const box = pgTable("box", {
   qrCode: text("qr_code").notNull().unique(),
   contents: text("contents").notNull(),
   notes: text("notes"),
+  accessToken: text("access_token").notNull().unique(),
+  isPublic: boolean("is_public").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import user from "./user";
 import room from "./room";
@@ -14,6 +14,7 @@ const project = pgTable("project", {
   status: text("status", { enum: ["draft", "active", "completed"] })
     .notNull()
     .default("draft"),
+  boxCount: integer("box_count").default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
