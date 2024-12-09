@@ -7,6 +7,8 @@
     import * as Breadcrumb from "@components/ui/breadcrumb";
     import { MobileNav } from "@components/layout";
     import { UserNav } from "@components/common";
+
+    const { user } = $props();
 </script>
 
 <header
@@ -50,5 +52,5 @@
         />
     </div>
 
-    <UserNav />
+    <UserNav {user} />
 </header>

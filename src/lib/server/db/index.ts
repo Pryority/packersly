@@ -1,15 +1,24 @@
+// src/lib/server/db/index.ts
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { env } from "$env/dynamic/private";
 import * as schema from "./schema";
+import env from "$lib/env";
 
-export const connection = postgres(env.DATABASE_URL, {
-  max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : undefined,
+const connectionConfig = {
+  max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 10,
   onnotice: env.DB_SEEDING ? () => {} : undefined,
   ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-});
+  idle_timeout: 20,
+  connect_timeout: 20,
+  keepalive: true,
+};
 
-const db = drizzle(connection, { schema, logger: true });
+export const connection = postgres(env.DATABASE_URL, connectionConfig);
+
+const db = drizzle(connection, {
+  schema,
+  logger: env.NODE_ENV === "development",
+});
 
 export type DB = typeof db;
 export default db;

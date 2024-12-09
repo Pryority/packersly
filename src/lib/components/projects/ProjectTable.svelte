@@ -2,6 +2,7 @@
 <script lang="ts">
     import * as Table from "@components/ui/table/index";
     import { Badge } from "@components/ui/badge";
+    import { cn } from "@utils";
 
     const { projects } = $props();
 </script>
@@ -30,7 +31,14 @@
                 </Table.Cell>
                 <Table.Cell class="hidden sm:table-cell">
                     <Badge
-                        class="capitalize"
+                        class={cn(
+                            "capitalize",
+                            project.status === "active"
+                                ? "bg-amber-200"
+                                : project.status === "completed"
+                                  ? "bg-lime-700 text-primary-foreground"
+                                  : "",
+                        )}
                         variant={project.status === "active"
                             ? "secondary"
                             : "outline"}

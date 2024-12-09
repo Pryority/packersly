@@ -1,10 +1,36 @@
 services:
   db:
-    image: postgres
+    container_name: packersly_postgres_db
+    image: postgres:latest
     restart: always
     ports:
-      - 5433:5432
+      - "${DB_PORT}:5432"
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: packersly
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_HOST_AUTH_METHOD: trust # For development
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=128MB
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - packersly_postgres_data:/var/lib/postgresql/data
+    networks:
+      - packersly_app_network
+
+networks:
+  packersly_app_network:
+    name: packersly_app_network
+    driver: bridge
+
+volumes:
+  packersly_postgres_data:
+    name: packersly_postgres_data

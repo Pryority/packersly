@@ -14,7 +14,7 @@ const project = pgTable("project", {
   status: text("status", { enum: ["draft", "active", "completed"] })
     .notNull()
     .default("draft"),
-  boxCount: integer("box_count").default(0),
+  itemCount: integer("item_count").default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

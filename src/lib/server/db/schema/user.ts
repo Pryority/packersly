@@ -4,12 +4,11 @@ import project from "./project";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
-  age: integer("age"),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  // Added fields
   email: text("email").notNull().unique(),
-  fullName: text("full_name").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
   userType: text("user_type", { enum: ["agent", "client"] })
     .notNull()
     .default("client"),

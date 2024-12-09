@@ -1,0 +1,93 @@
+import { fail, redirect } from "@sveltejs/kit";
+import type { Actions } from "./$types";
+import { hash } from "@node-rs/argon2";
+import db from "@db";
+import * as table from "@db/schema";
+import { eq } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+import { registerSchema } from "@server/zod";
+// import { sendVerificationEmail } from "@server/email";
+
+export const actions = {
+  register: async ({ request }) => {
+    try {
+      console.log("No session token found");
+      const formData = Object.fromEntries(await request.formData());
+      console.log("Received form data:", formData);
+
+      const result = registerSchema.safeParse(formData);
+      if (!result.success) {
+        const errors = result.error.flatten().fieldErrors;
+        return fail(400, {
+          error: errors,
+          data: formData,
+        });
+      }
+
+      // Check if user exists
+      const existingUser = await db.query.user.findFirst({
+        where: eq(table.user.email, result.data.email),
+      });
+      console.log("Existing user check:", {
+        email: result.data.email,
+        exists: !!existingUser,
+      });
+
+      if (existingUser) {
+        return fail(400, {
+          error: "User already exists",
+          data: formData,
+        });
+      }
+
+      const userId = generateId();
+      // const verificationToken = randomBytes(32).toString("hex");
+      // console.log("Generated tokens:", { userId, verificationToken });
+
+      console.log("Starting transaction");
+      await db.transaction(async (tx) => {
+        // Create user
+        await tx.insert(table.user).values({
+          id: userId,
+          username: result.data.email,
+          email: result.data.email,
+          passwordHash: await hash(result.data.password),
+          firstName: result.data.first_name,
+          lastName: result.data.last_name,
+          userType: result.data.user_type,
+        });
+        console.log("User inserted");
+
+        // Create verification token
+        // await tx.insert(table.verificationToken).values({
+        //   token: verificationToken,
+        //   userId,
+        //   expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        // });
+        // console.log("Verification token inserted");
+
+        // Send verification email
+        // await sendVerificationEmail(
+        //   result.data.email,
+        //   userId,
+        //   verificationToken,
+        // );
+        // console.log("Verification email sent");
+      });
+
+      // Return success response
+      // return { success: true };
+      return redirect(302, "/dashboard");
+    } catch (error) {
+      console.error("Registration error:", error);
+      return fail(500, {
+        error: "An error occurred during registration",
+        data: null,
+      });
+    }
+  },
+} satisfies Actions;
+
+function generateId(): string {
+  return randomBytes(12).toString("base64url");
+}
