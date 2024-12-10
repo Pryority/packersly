@@ -8,7 +8,7 @@
     import { Switch } from "@components/ui/switch";
     import type { ActionResult, Actions } from "@sveltejs/kit";
 
-    const { form }: { form: Actions } = $props();
+    // const { form }: { form: Actions } = $props();
     let submitting = $state(false);
     let isAgent = $state(false);
 

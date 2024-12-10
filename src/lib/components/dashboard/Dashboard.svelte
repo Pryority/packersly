@@ -3,7 +3,7 @@
     import { DashboardHeader, DashboardSidebar } from "@components/layout";
     import { ProjectStats } from "@components/stats";
     import { ProjectList } from "@components/projects";
-    const { user } = $props();
+    const { user, projects, form } = $props();
 </script>
 
 <div class="bg-muted/40 flex min-h-screen w-full flex-col">
@@ -16,8 +16,8 @@
             <div
                 class="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2"
             >
-                <ProjectStats />
-                <ProjectList />
+                <ProjectStats {form} />
+                <ProjectList allProjects={projects} />
             </div>
             <div>
                 <!-- Project Details Component will go here -->

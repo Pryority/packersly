@@ -1,119 +1,90 @@
 // src/routes/dashboard/+page.server.ts
 import { error, fail, redirect } from "@sveltejs/kit";
+import type { Actions, PageServerLoad } from "./$types";
 import db from "@db";
 import { project, user, room } from "@db/schema";
-import type { Actions, PageServerLoad } from "./$types";
 import { eq } from "drizzle-orm";
-import { projectSchema } from "@server/zod";
+import { projectSchema, type ProjectSchema } from "@server/zod";
+import { z } from "zod";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user) {
-		throw redirect(302, "/login");
-	}
+  if (!locals.user) {
+    throw redirect(302, "/login");
+  }
 
-	// Get the dialog state from URL
-	const showCreateProject = url.searchParams.has("new");
+  const projects = await db
+    .select()
+    .from(project)
+    .where(eq(project.userId, locals.user.id));
 
-	// const USER = await db
-	//   .select() // Perform a SELECT query
-	//   .from(user) // 'user' table reference
-	//   .where(eq(user.username, locals.user.username)) // The condition
-	//   .limit(1)
-	//   .then((res) => res[0]);
+  // Initial form data
+  const form = {
+    name: "Test Name",
+    fromAddress: "Test From",
+    toAddress: "Test To",
+    rooms: [{ name: "Test Room", colorCode: "#000000" }],
+  };
 
-	// console.log(USER);
-	return {
-		showCreateProject,
-	};
+  console.log("Server Load Data:", { user: locals.user, projects, form });
+
+  return {
+    user: locals.user,
+    form,
+    projects,
+    showCreateProject: url.searchParams.has("new"),
+  };
 };
 
-export const actions: Actions = {
-	"create-project": async ({ request, locals }) => {
-		if (!locals.user) {
-			throw error(401, "Unauthorized");
-		}
-		const formData = await request.formData();
+export const actions = {
+  "create-project": async ({ request, locals }) => {
+    if (!locals.user) {
+      throw error(401, "Unauthorized");
+    }
+    const formData = await request.formData();
+    const data = JSON.parse(formData.get("formData") as string);
 
-		// Get all entries and group them
-		const entries = Array.from(formData.entries());
+    try {
+      const validatedData = projectSchema.parse(data);
+      const userId = await db
+        .select()
+        .from(user)
+        .where(eq(user.username, locals.user.username))
+        .limit(1)
+        .then((res) => res[0].id);
 
-		const roomNames = entries
-			.filter(([key]) => key === "rooms[]")
-			.map(([_, value]) => value as string);
+      const newProject = await db.transaction(async (tx) => {
+        const [createdProject] = await tx
+          .insert(project)
+          .values({
+            userId,
+            name: validatedData.name,
+            fromAddress: validatedData.fromAddress,
+            toAddress: validatedData.toAddress,
+            status: "draft",
+          })
+          .returning();
 
-		const roomColors = entries
-			.filter(([key]) => key === "roomColors[]")
-			.map(([_, value]) => value as string);
+        await Promise.all(
+          validatedData.rooms.map((roomData) =>
+            tx.insert(room).values({
+              projectId: createdProject.id,
+              name: roomData.name,
+              colorCode: roomData.colorCode,
+            }),
+          ),
+        );
+        return createdProject.id;
+      });
 
-		const data = {
-			name: formData.get("name") as string,
-			fromAddress: formData.get("fromAddress") as string,
-			toAddress: formData.get("toAddress") as string,
-			rooms: roomNames.map((name, i) => ({
-				name,
-				colorCode: roomColors[i],
-			})),
-		};
-
-		const result = projectSchema.safeParse(data);
-		if (!result.success) {
-			return fail(400, {
-				data: {
-					name: data.name,
-					fromAddress: data.fromAddress,
-					toAddress: data.toAddress,
-					rooms: data.rooms,
-				},
-				errors: result.error.flatten(),
-			});
-		}
-
-		const userId = await db
-			.select()
-			.from(user)
-			.where(eq(user.username, locals.user.username))
-			.limit(1)
-			.then((res) => res[0].id);
-
-		try {
-			const newProject = await db.transaction(async (tx) => {
-				const [createdProject] = await tx
-					.insert(project)
-					.values({
-						userId,
-						name: result.data.name,
-						fromAddress: result.data.fromAddress,
-						toAddress: result.data.toAddress,
-						status: "draft",
-					})
-					.returning();
-
-				// Insert all rooms but don't return them
-				await Promise.all(
-					result.data.rooms.map((roomData) =>
-						tx.insert(room).values({
-							projectId: createdProject.id,
-							name: roomData.name,
-							colorCode: roomData.colorCode,
-						}),
-					),
-				);
-
-				return createdProject.id;
-			});
-
-			return redirect(302, `/project/${newProject}`);
-		} catch (e) {
-			console.error(e);
-			return fail(500, {
-				data: {
-					name: data.name,
-					fromAddress: data.fromAddress,
-					toAddress: data.toAddress,
-					rooms: data.rooms,
-				},
-				errors: { form: ["Could not create project"] },
-			});
-		}
-	},
-};
+      return { success: true };
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return fail(400, {
+          errors: err.errors,
+          data,
+        });
+      }
+      throw error(500, "Internal server error");
+    }
+  },
+} satisfies Actions;

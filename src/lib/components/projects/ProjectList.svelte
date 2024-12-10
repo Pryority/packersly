@@ -5,45 +5,47 @@
     import { ProjectFilters, ProjectTable } from "@components/projects";
     import type { Project } from "@server/db/schema/project";
 
+    const { allProjects }: { allProjects: Project[] } = $props();
+
     // State for the active tab
     let activeTab = $state("all");
 
     // Sample project data
-    const allProjects: Project[] = [
-        {
-            id: "1",
-            userId: "user_123",
-            name: "Move to 123 Main St",
-            fromAddress: "456 Oak Ave",
-            toAddress: "123 Main St",
-            status: "active",
-            itemCount: 15,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        },
-        {
-            id: "2",
-            userId: "user_123",
-            name: "Move to Summer House",
-            fromAddress: "789 Pine St",
-            toAddress: "321 Beach Rd",
-            status: "draft",
-            itemCount: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        },
-        {
-            id: "3",
-            userId: "user_123",
-            name: "Office Relocation",
-            fromAddress: "101 Business Ave",
-            toAddress: "202 Commerce St",
-            status: "completed",
-            itemCount: 25,
-            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            updatedAt: new Date(),
-        },
-    ];
+    // const allProjects: Project[] = [
+    //     {
+    //         id: "1",
+    //         userId: "user_123",
+    //         name: "Move to 123 Main St",
+    //         fromAddress: "456 Oak Ave",
+    //         toAddress: "123 Main St",
+    //         status: "active",
+    //         itemCount: 15,
+    //         createdAt: new Date(),
+    //         updatedAt: new Date(),
+    //     },
+    //     {
+    //         id: "2",
+    //         userId: "user_123",
+    //         name: "Move to Summer House",
+    //         fromAddress: "789 Pine St",
+    //         toAddress: "321 Beach Rd",
+    //         status: "draft",
+    //         itemCount: 0,
+    //         createdAt: new Date(),
+    //         updatedAt: new Date(),
+    //     },
+    //     {
+    //         id: "3",
+    //         userId: "user_123",
+    //         name: "Office Relocation",
+    //         fromAddress: "101 Business Ave",
+    //         toAddress: "202 Commerce St",
+    //         status: "completed",
+    //         itemCount: 25,
+    //         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    //         updatedAt: new Date(),
+    //     },
+    // ];
 
     // Filtered projects
     let projects = $state<Project[] | []>([]);

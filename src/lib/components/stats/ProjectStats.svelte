@@ -7,59 +7,45 @@
     import { CreateProjectForm } from "@components/projects";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    // These would come from your data store
+    import type { ProjectSchema } from "@server/zod";
+    import { Control } from "@components/ui/form";
+
     const stats = {
         activeProjects: 12,
         totalBoxes: 156,
         completionRate: 85,
     };
-    let showDialog = $state(false);
-    let formData = $state({
-        name: "",
-        fromAddress: "",
-        toAddress: "",
-        rooms: [{ name: "", colorCode: "#000000" }],
-    });
 
-    // Get the dialog state and form data from URL
+    const { form } = $props<{ form: ProjectSchema }>();
+
+    let open = $state(false);
+    let formData = $state(form);
+
+    // Sync with URL state
     $effect(() => {
-        showDialog = $page.url.searchParams.has("new");
-        // Parse form data from URL if present
+        open = $page.url.searchParams.has("new");
+
         const formDataParam = $page.url.searchParams.get("formData");
         if (formDataParam) {
             try {
-                formData = JSON.parse(decodeURIComponent(formDataParam));
+                const parsed = JSON.parse(decodeURIComponent(formDataParam));
+                formData = parsed;
             } catch (e) {
                 console.error("Failed to parse form data from URL");
             }
+        } else {
+            formData = form;
         }
     });
 
     function openDialog() {
-        const searchParams = new URLSearchParams($page.url.searchParams);
-        searchParams.set("new", "true");
-        searchParams.set(
-            "formData",
-            encodeURIComponent(JSON.stringify(formData)),
-        );
-        goto(`?${searchParams.toString()}`, { keepFocus: true });
+        const url = new URL($page.url);
+        url.searchParams.set("new", "true");
+        goto(url.toString(), { replaceState: true });
     }
 
     function closeDialog() {
-        goto("/dashboard", { keepFocus: true });
-    }
-
-    function updateFormData(newData: typeof formData) {
-        formData = newData;
-        const searchParams = new URLSearchParams($page.url.searchParams);
-        searchParams.set(
-            "formData",
-            encodeURIComponent(JSON.stringify(newData)),
-        );
-        goto(`?${searchParams.toString()}`, {
-            keepFocus: true,
-            noScroll: true,
-        });
+        goto("/dashboard", { replaceState: true });
     }
 </script>
 
@@ -107,24 +93,25 @@
         </Card.Footer>
     </Card.Root>
 
-    <Dialog.Root
-        open={showDialog}
-        onOpenChange={(open: boolean) => !open && closeDialog()}
-    >
-        <Dialog.Content class="sm:max-w-[625px]">
-            <Dialog.Header>
-                <Dialog.Title>Create New Project</Dialog.Title>
-                <Dialog.Description>
-                    Set up your new moving project. Add rooms and assign them
-                    colors for easy organization.
-                </Dialog.Description>
-            </Dialog.Header>
-
-            <CreateProjectForm
-                onSuccess={closeDialog}
-                initialData={formData}
-                onFormChange={updateFormData}
+    <Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && closeDialog()}>
+        <Dialog.Portal>
+            <Dialog.Overlay
+                class="bg-background/80 backdrop-blur-sm animate-in fade-in"
             />
-        </Dialog.Content>
+            <Dialog.Content class="sm:max-w-[625px]">
+                <Dialog.Header>
+                    <Dialog.Title>Create New Project</Dialog.Title>
+                    <Dialog.Description>
+                        Set up your new moving project. Add rooms and assign
+                        them colors for easy organization.
+                    </Dialog.Description>
+                </Dialog.Header>
+                <CreateProjectForm
+                    onSuccess={closeDialog}
+                    initialData={formData}
+                    onFormChange={(data) => (formData = data)}
+                />
+            </Dialog.Content>
+        </Dialog.Portal>
     </Dialog.Root>
 </div>
