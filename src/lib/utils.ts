@@ -77,3 +77,11 @@ export function getUserInitials(
     return username[0].toUpperCase();
   return "";
 }
+
+export function generateHandle(name: string): string {
+  const handle = name.toLowerCase().replace(/\s+/g, "-"); // Convert spaces to hyphens
+  if (handle.length < 3 || handle.length > 50) {
+    throw new Error("Handle length must be between 3 and 50 characters");
+  }
+  return handle;
+}

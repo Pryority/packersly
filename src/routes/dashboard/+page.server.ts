@@ -6,16 +6,23 @@ import { project, user, room } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { projectSchema, type ProjectSchema } from "@server/zod";
 import { z } from "zod";
+import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  const projects = await db
-    .select()
-    .from(project)
-    .where(eq(project.userId, locals.user.id));
+  const projects = await db.query.project.findMany({
+    where: eq(project.userId, locals.user.id),
+    with: {
+      rooms: {
+        with: {
+          boxes: true,
+        },
+      },
+    },
+  });
 
   // Initial form data
   const form = {
@@ -58,6 +65,7 @@ export const actions = {
           .values({
             userId,
             name: validatedData.name,
+            handle: generateHandle(validatedData.name),
             fromAddress: validatedData.fromAddress,
             toAddress: validatedData.toAddress,
             status: "draft",
@@ -69,6 +77,7 @@ export const actions = {
             tx.insert(room).values({
               projectId: createdProject.id,
               name: roomData.name,
+              handle: generateHandle(roomData.name),
               colorCode: roomData.colorCode,
             }),
           ),

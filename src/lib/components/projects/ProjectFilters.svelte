@@ -2,7 +2,8 @@
 <script lang="ts">
     import { Button } from "@components/ui/button";
     import * as DropdownMenu from "@components/ui/dropdown-menu";
-    import { ListFilter, FileIcon } from "lucide-svelte";
+    import ListFilter from "lucide-svelte/icons/list-filter";
+    import FileIcon from "lucide-svelte/icons/file";
 </script>
 
 <div class="flex items-center gap-2">

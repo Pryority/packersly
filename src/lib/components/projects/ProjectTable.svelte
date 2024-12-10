@@ -3,6 +3,7 @@
     import * as Table from "@components/ui/table/index";
     import { Badge } from "@components/ui/badge";
     import { cn } from "@utils";
+    import FolderSymlink from "lucide-svelte/icons/folder-symlink";
 
     const { projects } = $props();
 </script>
@@ -14,7 +15,9 @@
             <Table.Head class="hidden sm:table-cell">Location</Table.Head>
             <Table.Head class="hidden sm:table-cell">Status</Table.Head>
             <Table.Head class="hidden md:table-cell">Created</Table.Head>
-            <Table.Head class="text-right">Boxes</Table.Head>
+            <Table.Head class="hidden md:table-cell">Boxes</Table.Head>
+            <Table.Head class="hidden md:table-cell">Items</Table.Head>
+            <Table.Head class="text-right">View</Table.Head>
         </Table.Row>
     </Table.Header>
     <Table.Body>
@@ -49,9 +52,21 @@
                 <Table.Cell class="hidden md:table-cell">
                     {new Date(project.createdAt).toLocaleDateString()}
                 </Table.Cell>
-                <Table.Cell class="text-right">
+                <Table.Cell class="hidden md:table-cell">
                     {project.boxCount || 0} boxes
                 </Table.Cell>
+                <Table.Cell class="hidden md:table-cell">
+                    {project.itemCount || 0} items
+                </Table.Cell>
+                <Table.Cell class="flex items-center justify-center">
+                    <a
+                        href={`/project/${project.handle}`}
+                        class="mt-2"
+                        data-sveltekit-preload-code="eager"
+                    >
+                        <FolderSymlink />
+                    </a></Table.Cell
+                >
             </Table.Row>
         {/each}
     </Table.Body>

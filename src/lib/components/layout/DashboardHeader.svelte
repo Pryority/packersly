@@ -1,6 +1,7 @@
 <!-- src/routes/dashboard/components/layout/DashboardHeader.svelte -->
 <script lang="ts">
-    import { PanelLeft, Search } from "lucide-svelte";
+    import PanelLeft from "lucide-svelte/icons/panel-left";
+    import Search from "lucide-svelte/icons/search";
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
     import * as Sheet from "@components/ui/sheet";

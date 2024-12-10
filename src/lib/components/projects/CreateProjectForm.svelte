@@ -18,8 +18,12 @@
     const projectSchema = z.object({
         name: z
             .string()
-            .min(2, "Project name must be at least 2 characters")
+            .min(3, "Project name must be at least 2 characters")
             .max(50, "Project name must be less than 50 characters"),
+        handle: z
+            .string()
+            .min(3, "Project handle must be at least 2 characters")
+            .max(50, "Project handle must be less than 50 characters"),
         fromAddress: z
             .string()
             .min(5, "Current address is too short")
@@ -33,8 +37,8 @@
                 z.object({
                     name: z
                         .string()
-                        .min(2, "Room name must be at least 2 characters")
-                        .max(30, "Room name must be less than 30 characters"),
+                        .min(3, "Room name must be at least 2 characters")
+                        .max(50, "Room name must be less than 50 characters"),
                     colorCode: z
                         .string()
                         .regex(

@@ -16,7 +16,7 @@
             <div
                 class="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2"
             >
-                <ProjectStats {form} />
+                <ProjectStats {form} {projects} />
                 <ProjectList allProjects={projects} />
             </div>
             <div>

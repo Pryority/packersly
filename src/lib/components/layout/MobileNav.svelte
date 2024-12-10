@@ -1,7 +1,10 @@
 <!-- src/routes/dashboard/components/layout/MobileNav.svelte -->
 <script lang="ts">
     import * as Sheet from "@components/ui/sheet";
-    import { Package2, House, Box, Settings } from "lucide-svelte";
+    import Package2 from "lucide-svelte/icons/package-2";
+    import House from "lucide-svelte/icons/house";
+    import Box from "lucide-svelte/icons/box";
+    import Settings from "lucide-svelte/icons/settings";
 </script>
 
 <Sheet.Content side="left" class="w-[80vw] sm:max-w-xs">

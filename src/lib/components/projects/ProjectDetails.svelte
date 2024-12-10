@@ -4,28 +4,55 @@
     import { Button } from "@components/ui/button";
     import { Separator } from "@components/ui/separator";
     import * as DropdownMenu from "@components/ui/dropdown-menu";
-    import { Copy, Truck, EllipsisVertical, Box, QrCode } from "lucide-svelte";
+    import Copy from "lucide-svelte/icons/copy";
+    import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
+    import QrCode from "lucide-svelte/icons/qr-code";
+    import Box from "lucide-svelte/icons/box";
+    import MapPinHouse from "lucide-svelte/icons/map-pin-house";
+    import House from "lucide-svelte/icons/house";
+    import Gem from "lucide-svelte/icons/gem";
+    import FolderSymlink from "lucide-svelte/icons/folder-symlink";
+    import { page } from "$app/stores";
+    import type { Project } from "@db/schema/project";
+    import type { Room } from "@db/schema/room";
 
-    const { projectId } = $props();
+    const { project } = $props();
 
-    // This would come from your data store
-    const project = {
-        id: "proj_123",
-        name: "Move to 123 Main St",
-        date: "2024-12-15",
-        status: "active",
-        fromAddress: "456 Oak Ave",
-        toAddress: "123 Main St",
-        rooms: [
-            { name: "Living Room", boxCount: 5, color: "green" },
-            { name: "Kitchen", boxCount: 8, color: "blue" },
-            // ... more rooms
-        ],
-        totalBoxes: 13,
-    };
+    let projectBoxCount = $derived(
+        project.rooms.reduce(
+            (totalBoxCount: number, project: Project & { rooms: Room[] }) => {
+                return (
+                    totalBoxCount +
+                    (project.rooms?.reduce(
+                        (roomBoxCount: number, room: Room) =>
+                            roomBoxCount + (room.boxCount ?? 0),
+                        0,
+                    ) ?? 0)
+                );
+            },
+            0,
+        ) ?? 0,
+    );
+
+    let projectItemCount = $derived(
+        project.rooms.reduce(
+            (totalItemCount: number, project: Project & { rooms: Room[] }) => {
+                return (
+                    totalItemCount +
+                    (project.rooms?.reduce(
+                        (roomBoxCount: number, room: Room) =>
+                            roomBoxCount + (room.boxCount ?? 0),
+                        0,
+                    ) ?? 0)
+                );
+            },
+            0,
+        ) ?? 0,
+    );
+    // console.log(project);
 </script>
 
-<Card.Root class="overflow-hidden">
+<Card.Root class="overflow-hidden m-4">
     <Card.Header class="bg-muted/50 flex flex-row items-start">
         <div class="grid gap-0.5">
             <Card.Title class="group flex items-center gap-2 text-lg">
@@ -39,11 +66,11 @@
                     <span class="sr-only">Copy Project ID</span>
                 </Button>
             </Card.Title>
-            <Card.Description
+            <!-- <Card.Description
                 >Moving Date: {new Date(
                     project.date,
                 ).toLocaleDateString()}</Card.Description
-            >
+            > -->
         </div>
 
         <div class="ml-auto flex items-center gap-1">
@@ -82,15 +109,31 @@
                 <div class="grid gap-2">
                     <div class="flex justify-between">
                         <span class="text-muted-foreground">From</span>
-                        <span>{project.fromAddress}</span>
+                        <div class="flex items-center gap-1">
+                            <span>{project.fromAddress}</span>
+                            <House size={16} />
+                        </div>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-muted-foreground">To</span>
-                        <span>{project.toAddress}</span>
+                        <div class="flex items-center gap-1">
+                            <span>{project.toAddress}</span>
+                            <MapPinHouse size={16} />
+                        </div>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-muted-foreground">Total Boxes</span>
-                        <span>{project.totalBoxes}</span>
+                        <div class="flex items-center gap-1">
+                            <span>{projectBoxCount}</span>
+                            <Box size={16} />
+                        </div>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Total Items</span>
+                        <div class="flex items-center gap-1">
+                            <span>{projectItemCount}</span>
+                            <Gem size={16} />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -105,11 +148,21 @@
                             <div class="flex items-center gap-2">
                                 <div
                                     class="h-3 w-3 rounded-full"
-                                    style="background-color: {room.color}"
+                                    style="background-color: {room.colorCode}"
                                 ></div>
                                 <span>{room.name}</span>
                             </div>
-                            <span>{room.boxCount} boxes</span>
+                            <div class="flex items-center gap-4">
+                                <span>{room.boxCount} boxes</span>
+                                <a
+                                    href={`${$page.url.pathname}/room/${room.handle}`}
+                                >
+                                    <FolderSymlink />
+                                </a>
+                                <!-- <span class="bg-black rounded-sm"
+                                    ><QrCode class="invert" /></span
+                                > -->
+                            </div>
                         </div>
                     {/each}
                 </div>
