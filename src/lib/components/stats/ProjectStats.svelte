@@ -142,10 +142,10 @@
         </Card.Header>
         <Card.Content>
             <div class="text-muted-foreground text-xs">
-                {activeProjectsBoxCount} boxes tracked
+                {activeProjectsBoxCount} boxes
             </div>
             <div class="text-muted-foreground text-xs">
-                {activeProjectsItemCount} total items
+                {activeProjectsItemCount} items
             </div>
         </Card.Content>
     </Card.Root>
