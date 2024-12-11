@@ -7,7 +7,6 @@
     import { CreateProjectForm } from "@components/projects";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    import type { ProjectWithRooms } from "@types";
     import {
         type SuperValidated,
         type Infer,
@@ -16,12 +15,15 @@
     import { zodClient } from "sveltekit-superforms/adapters";
     import { projectSchema, type ProjectSchema } from "@routes/settings/zod";
     import type { ActionResult } from "@sveltejs/kit";
+    import type { ProjectData } from "@types";
+    import { getProjectStats } from "@utils";
+
     const {
         data,
         projects,
     }: {
         data: SuperValidated<Infer<ProjectSchema>>;
-        projects: ProjectWithRooms[];
+        projects: ProjectData[];
     } = $props();
 
     let open = $state(false);
@@ -46,52 +48,9 @@
         },
     });
 
-    let activeProjectsCount = $derived(
-        projects?.filter((p) => p.status === "active")?.length ?? 0,
-    );
-
-    let activeProjectsBoxCount = $derived(
-        projects
-            ?.filter((p) => p.status === "active")
-            ?.reduce((totalBoxCount, project) => {
-                const roomBoxCount =
-                    project.rooms?.reduce(
-                        (acc, room) => acc + (room.boxCount ?? 0),
-                        0,
-                    ) ?? 0;
-                return totalBoxCount + roomBoxCount;
-            }, 0) ?? 0,
-    );
-
-    let activeProjectsItemCount = $derived(
-        projects
-            ?.filter((p) => p.status === "active")
-            ?.reduce((totalItemCount, project) => {
-                const roomItemCount =
-                    project.rooms?.reduce(
-                        (acc, room) => acc + (room.itemCount ?? 0),
-                        0,
-                    ) ?? 0;
-                return totalItemCount + roomItemCount;
-            }, 0) ?? 0,
-    );
-
-    // Sync with URL state
-    // $effect(() => {
-    //     open = $page.url.searchParams.has("new");
-
-    //     const formDataParam = $page.url.searchParams.get("formData");
-    //     if (formDataParam) {
-    //         try {
-    //             const parsed = JSON.parse(decodeURIComponent(formDataParam));
-    //             formData = parsed;
-    //         } catch (e) {
-    //             console.error("Failed to parse form data from URL");
-    //         }
-    //     } else {
-    //         formData = form;
-    //     }
-    // });
+    let activeStats = $derived(getProjectStats(projects, "active"));
+    let draftStats = $derived(getProjectStats(projects, "draft"));
+    let completedStats = $derived(getProjectStats(projects, "completed"));
 
     function openForm() {
         const url = new URL($page.url);
@@ -121,7 +80,7 @@
 </script>
 
 <div
-    class="grid gap-4 min-w-0 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4"
+    class="grid gap-4 min-w-0 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-5"
 >
     <Card.Root class="sm:col-span-2">
         <Card.Header class="pb-3">
@@ -139,14 +98,44 @@
     <Card.Root>
         <Card.Header class="pb-2">
             <Card.Description>Active Projects</Card.Description>
-            <Card.Title class="text-4xl">{activeProjectsCount}</Card.Title>
+            <Card.Title class="text-4xl">{activeStats.count}</Card.Title>
         </Card.Header>
         <Card.Content>
             <div class="text-muted-foreground text-xs">
-                {activeProjectsBoxCount} boxes
+                {activeStats.boxCount} boxes
             </div>
             <div class="text-muted-foreground text-xs">
-                {activeProjectsItemCount} items
+                {activeStats.itemCount} items
+            </div>
+        </Card.Content>
+    </Card.Root>
+
+    <Card.Root>
+        <Card.Header class="pb-2">
+            <Card.Description>Draft Projects</Card.Description>
+            <Card.Title class="text-4xl">{draftStats.count}</Card.Title>
+        </Card.Header>
+        <Card.Content>
+            <div class="text-muted-foreground text-xs">
+                {draftStats.boxCount} boxes
+            </div>
+            <div class="text-muted-foreground text-xs">
+                {draftStats.itemCount} items
+            </div>
+        </Card.Content>
+    </Card.Root>
+
+    <Card.Root>
+        <Card.Header class="pb-2">
+            <Card.Description>Completed Projects</Card.Description>
+            <Card.Title class="text-4xl">{activeStats.count}</Card.Title>
+        </Card.Header>
+        <Card.Content>
+            <div class="text-muted-foreground text-xs">
+                {activeStats.boxCount} boxes
+            </div>
+            <div class="text-muted-foreground text-xs">
+                {activeStats.itemCount} items
             </div>
         </Card.Content>
     </Card.Root>

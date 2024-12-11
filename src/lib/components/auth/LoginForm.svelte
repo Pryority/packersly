@@ -9,7 +9,7 @@
     let submitting = $state(false);
 </script>
 
-<form method="POST" action="?/login" use:enhance>
+<form method="POST" use:enhance>
     <div class="space-y-4">
         <div>
             <Label for="email">Email</Label>

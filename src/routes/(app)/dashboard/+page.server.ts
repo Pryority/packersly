@@ -8,7 +8,7 @@ import { generateHandle } from "@utils";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { projectSchema } from "@routes/settings/zod";
-import type { ProjectWithRooms } from "@types";
+import type { ProjectData } from "@types";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
@@ -20,13 +20,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     with: {
       rooms: {
         with: {
-          boxes: true,
+          boxes: {
+            with: {
+              items: true, // This will return null/empty for boxes without items
+            },
+          },
         },
       },
     },
-  })) as ProjectWithRooms[];
+  })) as ProjectData[];
 
-  console.log("Server Load Data:", { user: locals.user, projects });
+  // console.log("Server Load Data:", { user: locals.user, projects });
 
   return {
     user: locals.user,

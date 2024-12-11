@@ -74,9 +74,16 @@ export const actions = {
         });
       }
 
-      // Now TypeScript knows handle is a string
+      // Verify room ownership
       const ROOM = await db.query.room.findFirst({
         where: eq(room.handle, handle),
+        with: {
+          project: {
+            columns: {
+              userId: true,
+            },
+          },
+        },
       });
 
       if (!ROOM) {
@@ -85,20 +92,33 @@ export const actions = {
           message: "Room not found",
         });
       }
+
+      // Verify user owns the project
+      if (ROOM.project.userId !== locals.user.id) {
+        throw error(
+          403,
+          "You don't have permission to create boxes in this room",
+        );
+      }
+
       // Use a transaction to ensure all operations succeed or fail together
       const newBox = await db.transaction(async (tx) => {
         const accessToken = crypto.randomUUID();
         const boxId = crypto.randomUUID();
 
-        // Generate QR code that links to the box page
-        // We can either use the private box route with ID or the public route with access token
-        const boxUrl = `${url.origin}/project/${handle}/room/${ROOM.handle}/box/${boxId}`;
-        // Alternative public URL: `${url.origin}/public/box/${accessToken}`
+        // Create a URL with both the box ID and access token
+        const boxUrl = new URL(
+          `${url.origin}/project/${handle}/room/${ROOM.handle}/box/${boxId}`,
+        );
+        boxUrl.searchParams.set("token", accessToken);
 
-        const qrCode = await QRCode.toString(boxUrl, {
+        // Generate QR code with the complete URL including access token
+        const qrCode = await QRCode.toString(boxUrl.toString(), {
           type: "svg",
           margin: 1,
           width: 256,
+          // Optional: Add error correction level for better scanning
+          errorCorrectionLevel: "M",
         });
 
         // Create the box
@@ -107,14 +127,14 @@ export const actions = {
           .values({
             id: boxId,
             roomId: ROOM.id,
-            qrCode, // Store the SVG string
+            qrCode,
             notes: null,
             accessToken,
             isPublic: false,
           })
           .returning();
 
-        // If we have items, create them
+        // Create items if provided
         if (form.data.items?.length) {
           await Promise.all(
             form.data.items.map((itemData) =>
@@ -127,17 +147,18 @@ export const actions = {
           );
         }
 
-        // Update room's box and item counts
+        // Update room counts
         const itemCount =
           form.data.items?.reduce(
             (sum, item) => sum + (item.quantity || 0),
             0,
           ) || 0;
+
         await tx
           .update(room)
           .set({
-            boxCount: ROOM.boxCount ? ROOM.boxCount + 1 : 0,
-            itemCount: ROOM.itemCount ? ROOM.itemCount + itemCount : 0,
+            boxCount: ROOM.boxCount ? ROOM.boxCount + 1 : 1, // Fixed: Start from 1 instead of 0
+            itemCount: ROOM.itemCount ? ROOM.itemCount + itemCount : itemCount,
           })
           .where(eq(room.id, ROOM.id));
 

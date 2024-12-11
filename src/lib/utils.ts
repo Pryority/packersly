@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { cubicOut } from "svelte/easing";
 import type { TransitionConfig } from "svelte/transition";
-import type { user as userTable } from "@db/schema";
+import type { ProjectData } from "@types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -98,4 +98,44 @@ export function generateHandle(name: string): string {
   }
 
   return normalized;
+}
+
+export function getTotalBoxes(project: ProjectData): number {
+  return project.rooms.reduce((total, room) => {
+    return total + (Array.isArray(room.boxes) ? room.boxes.length : 0);
+  }, 0);
+}
+
+export function getTotalItems(project: ProjectData): number {
+  return project.rooms.reduce((roomTotal, room) => {
+    return (
+      roomTotal +
+      room.boxes.reduce((boxTotal, box) => {
+        if (!box.items) return boxTotal;
+        return (
+          boxTotal +
+          box.items.reduce((itemTotal, item) => {
+            return itemTotal + (item.quantity || 1);
+          }, 0)
+        );
+      }, 0)
+    );
+  }, 0);
+}
+
+export function getProjectStats(
+  projects: ProjectData[],
+  status: "active" | "draft" | "completed",
+) {
+  const filteredProjects = projects?.filter((p) => p.status === status) ?? [];
+
+  return {
+    count: filteredProjects.length,
+    boxCount: filteredProjects.reduce((total, project) => {
+      return total + getTotalBoxes(project);
+    }, 0),
+    itemCount: filteredProjects.reduce((total, project) => {
+      return total + getTotalItems(project);
+    }, 0),
+  };
 }

@@ -2,7 +2,7 @@ import * as auth from "@server/auth";
 import { type Actions, fail, redirect } from "@sveltejs/kit";
 
 export const actions: Actions = {
-  logout: async (event) => {
+  default: async (event) => {
     if (!event.locals.session) {
       console.log("Logout failed: No session found");
       return fail(401);

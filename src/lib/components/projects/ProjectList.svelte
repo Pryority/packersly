@@ -3,15 +3,15 @@
     import * as Card from "@components/ui/card";
     import * as Tabs from "@components/ui/tabs";
     import { ProjectFilters, ProjectTable } from "@components/projects";
-    import type { Project } from "@server/db/schema/project";
+    import type { ProjectData } from "@types";
 
-    const { allProjects }: { allProjects: Project[] } = $props();
+    const { allProjects }: { allProjects: ProjectData[] } = $props();
 
     // State for the active tab
     let activeTab = $state("all");
 
     // Filtered projects
-    let projects = $state<Project[] | []>([]);
+    let projects = $state<ProjectData[] | []>([]);
 
     // Effect to update filtered projects when activeTab changes
     $effect(() => {
@@ -35,10 +35,12 @@
 <Tabs.Root value={activeTab} onValueChange={setTab}>
     <div class="flex items-center">
         <Tabs.List class="w-full">
-            <Tabs.Trigger value="all">All</Tabs.Trigger>
-            <Tabs.Trigger value="active">Active</Tabs.Trigger>
-            <Tabs.Trigger value="draft">Draft</Tabs.Trigger>
-            <Tabs.Trigger value="completed">Completed</Tabs.Trigger>
+            <Tabs.Trigger class="w-full" value="all">All</Tabs.Trigger>
+            <Tabs.Trigger class="w-full" value="active">Active</Tabs.Trigger>
+            <Tabs.Trigger class="w-full" value="draft">Draft</Tabs.Trigger>
+            <Tabs.Trigger class="w-full" value="completed"
+                >Completed</Tabs.Trigger
+            >
         </Tabs.List>
         <!-- <div class="ml-auto">
             <ProjectFilters />
