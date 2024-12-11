@@ -4,119 +4,57 @@
     import * as Form from "@components/ui/form";
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
-    import type { SubmitFunction } from "@sveltejs/kit";
-    import { enhance } from "$app/forms";
-    import { z } from "zod";
-    import { superForm } from "sveltekit-superforms";
-    import { zodClient } from "sveltekit-superforms/adapters";
     import Label from "@components/ui/label/label.svelte";
+    import { projectSchema } from "@routes/settings/zod";
+    import {
+        type FormPath,
+        type Infer,
+        type SuperForm,
+    } from "sveltekit-superforms";
+    import Trash from "lucide-svelte/icons/trash";
 
-    const projectSchema = z.object({
-        name: z
-            .string()
-            .min(3, "Project name must be at least 2 characters")
-            .max(50, "Project name must be less than 50 characters"),
-        handle: z
-            .string()
-            .min(3, "Project handle must be at least 2 characters")
-            .max(50, "Project handle must be less than 50 characters"),
-        fromAddress: z
-            .string()
-            .min(5, "Current address is too short")
-            .max(100, "Current address is too long"),
-        toAddress: z
-            .string()
-            .min(5, "New address is too short")
-            .max(100, "New address is too long"),
-        rooms: z
-            .array(
-                z.object({
-                    name: z
-                        .string()
-                        .min(3, "Room name must be at least 2 characters")
-                        .max(50, "Room name must be less than 50 characters"),
-                    colorCode: z
-                        .string()
-                        .regex(
-                            /^#[0-9A-Fa-f]{6}$/,
-                            "Must be a valid hex color code",
-                        ),
-                }),
-            )
-            .min(1, "At least one room is required")
-            .max(20, "Maximum 20 rooms allowed"),
-    });
-
-    type ProjectSchema = z.infer<typeof projectSchema>;
-
-    const { onSuccess, initialData, onFormChange } = $props<{
-        onSuccess: () => void;
-        initialData: ProjectSchema;
-        onFormChange: (data: ProjectSchema) => void;
-    }>();
-
-    const form = superForm(initialData, {
-        validators: zodClient(projectSchema),
-        dataType: "json", // Add this to handle nested data like "rooms"
-    });
-
-    let formData = $state<ProjectSchema>(initialData);
-
-    // Update parent component whenever form data changes
-    $effect(() => {
-        onFormChange(formData);
-    });
-
-    // let errors = $state<Record<string, string>>({});
-    let fieldErrors = $state<Record<string, string>>({});
+    const {
+        form,
+        submitting,
+    }: { form: SuperForm<Infer<typeof projectSchema>>; submitting: boolean } =
+        $props();
+    const { form: formData, enhance } = form;
 
     function addRoom() {
-        formData.rooms = [
-            ...formData.rooms,
-            { name: "", colorCode: "#000000" },
-        ];
+        formData.update(($formData) => ({
+            ...$formData,
+            rooms: [...$formData.rooms, { name: "", colorCode: "#000000" }],
+        }));
     }
 
-    function validateForm() {
-        try {
-            projectSchema.parse(formData);
-            return true;
-        } catch (error: any) {
-            if (error.errors) {
-                error.errors.forEach((err: any) => {
-                    fieldErrors[err.path.join(".")] = err.message;
-                });
-            }
-            return false;
+    function removeRoom(index: number) {
+        formData.update(($formData) => ({
+            ...$formData,
+            rooms: $formData.rooms.filter((_, i) => i !== index),
+        }));
+    }
+
+    $effect(() => {
+        if ($formData.rooms.length === 0) {
+            formData.update(($formData) => ({
+                ...$formData,
+                rooms: [{ name: "", colorCode: "#000000" }],
+            }));
         }
-    }
-
-    const handleSubmit: SubmitFunction = ({ cancel }) => {
-        return async ({ result }) => {
-            // Validate the form before processing submission
-            if (!validateForm()) {
-                cancel();
-                return;
-            }
-
-            // Handle success and failure outcomes
-            if (result.type === "success") {
-                onSuccess();
-            } else if (result.type === "failure") {
-                cancel();
-            }
-        };
-    };
+    });
 </script>
 
 <Card.Root>
-    <form method="POST" action="?/create-project" use:enhance={handleSubmit}>
-        <input type="hidden" name="formData" value={JSON.stringify(formData)} />
+    <form method="POST" action="?/create-project" use:enhance>
         <Card.Content class="space-y-4">
             <Form.Field {form} name="name">
                 <Form.Control let:attrs>
                     <Form.Label>Project Name</Form.Label>
-                    <Input bind:value={formData.name} {...attrs} />
+                    <Input
+                        bind:value={$formData.name}
+                        {...attrs}
+                        placeholder="Enter a name for your move"
+                    />
                 </Form.Control>
                 <Form.Description
                     >Give your moving project a memorable name</Form.Description
@@ -127,7 +65,11 @@
             <Form.Field {form} name="fromAddress">
                 <Form.Control let:attrs>
                     <Form.Label>Current Address</Form.Label>
-                    <Input bind:value={formData.fromAddress} {...attrs} />
+                    <Input
+                        bind:value={$formData.fromAddress}
+                        {...attrs}
+                        placeholder="Enter where you are moving from"
+                    />
                 </Form.Control>
                 <Form.Description
                     >The address you're moving from</Form.Description
@@ -138,7 +80,11 @@
             <Form.Field {form} name="toAddress">
                 <Form.Control let:attrs>
                     <Form.Label>New Address</Form.Label>
-                    <Input bind:value={formData.toAddress} {...attrs} />
+                    <Input
+                        bind:value={$formData.toAddress}
+                        {...attrs}
+                        placeholder="Enter where you are moving to"
+                    />
                 </Form.Control>
                 <Form.Description>The address you're moving to</Form.Description
                 >
@@ -147,41 +93,59 @@
 
             <div class="space-y-2">
                 <Label>Rooms</Label>
-                {#each formData.rooms as room, i}
-                    <Form.Field {form} name={`rooms.${i}.name`}>
-                        <Form.Control let:attrs>
-                            <div class="flex gap-2 items-center">
+                {#each $formData.rooms as room, i}
+                    <div class="flex gap-2 items-center">
+                        <Form.Field
+                            {form}
+                            name={`rooms.${i}.name` as FormPath<
+                                Infer<typeof projectSchema>
+                            >}
+                        >
+                            <Form.Control let:attrs>
                                 <div class="w-full">
                                     <Form.Label>Room {i + 1} Name</Form.Label>
                                     <Input
-                                        bind:value={formData.rooms[i].name}
+                                        bind:value={$formData.rooms[i].name}
                                         placeholder="Room name"
                                         {...attrs}
-                                        aria-invalid={fieldErrors[
-                                            `rooms.${i}.name`
-                                        ]
-                                            ? "true"
-                                            : undefined}
                                     />
                                     <Form.FieldErrors />
                                 </div>
+                            </Form.Control>
+                        </Form.Field>
+
+                        <Form.Field
+                            {form}
+                            name={`rooms.${i}.colorCode` as FormPath<
+                                Infer<typeof projectSchema>
+                            >}
+                        >
+                            <Form.Control let:attrs>
                                 <div>
                                     <Form.Label>Color</Form.Label>
                                     <Input
                                         type="color"
-                                        bind:value={formData.rooms[i].colorCode}
-                                        class="w-12 h-9 p-0"
-                                        aria-invalid={fieldErrors[
-                                            `rooms.${i}.colorCode`
-                                        ]
-                                            ? "true"
-                                            : undefined}
+                                        bind:value={$formData.rooms[i]
+                                            .colorCode}
+                                        class="w-12 h-9 p-0 cursor-pointer"
+                                        {...attrs}
                                     />
                                     <Form.FieldErrors />
                                 </div>
-                            </div>
-                        </Form.Control>
-                    </Form.Field>
+                            </Form.Control>
+                        </Form.Field>
+
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            class="mt-6"
+                            on:click={() => removeRoom(i)}
+                            disabled={$formData.rooms.length === 1}
+                        >
+                            <Trash />
+                        </Button>
+                    </div>
                 {/each}
                 <Button type="button" variant="outline" on:click={addRoom}>
                     Add Room
@@ -190,7 +154,9 @@
         </Card.Content>
 
         <Card.Footer>
-            <Button type="submit">Create Project</Button>
+            <Button type="submit" disabled={submitting}>
+                {submitting ? "Creating..." : "Create Project"}
+            </Button>
         </Card.Footer>
     </form>
 </Card.Root>

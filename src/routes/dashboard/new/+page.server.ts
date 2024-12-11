@@ -4,7 +4,6 @@ import db from "@db";
 import { project, user, room } from "@db/schema";
 import type { Actions, PageServerLoad } from "./$types";
 import { eq } from "drizzle-orm";
-import { projectSchema } from "@server/zod";
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) {

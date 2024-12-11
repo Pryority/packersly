@@ -1,23 +1,18 @@
 <!-- src/lib/components/auth/RegisterForm.svelte -->
 <script lang="ts">
-    import { goto } from "$app/navigation";
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
     import { Label } from "@components/ui/label";
     import { Switch } from "@components/ui/switch";
     import * as Form from "@components/ui/form";
-    import type { ActionResult, SubmitFunction } from "@sveltejs/kit";
-    import { z } from "zod";
+    import type { ActionResult } from "@sveltejs/kit";
     import {
         type SuperValidated,
         type Infer,
         superForm,
     } from "sveltekit-superforms";
     import { zodClient } from "sveltekit-superforms/adapters";
-    import {
-        registerSchema,
-        type RegisterSchema,
-    } from "../../../routes/settings/zod";
+    import { registerSchema, type RegisterSchema } from "@routes/settings/zod";
 
     const { data }: { data: SuperValidated<Infer<RegisterSchema>> } = $props();
 
@@ -45,7 +40,7 @@
     let isAgent = $state(false);
 </script>
 
-<form method="POST" action="?/register" use:enhance>
+<form method="POST" use:enhance>
     <div class="space-y-4">
         <Form.Field
             {form}

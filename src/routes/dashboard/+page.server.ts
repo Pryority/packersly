@@ -1,13 +1,14 @@
 // src/routes/dashboard/+page.server.ts
-import { error, fail, redirect } from "@sveltejs/kit";
+import { error, fail, redirect, type Redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import db from "@db";
 import { project, user, room } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { projectSchema, type ProjectSchema } from "@server/zod";
-import { z } from "zod";
 import { generateHandle } from "@utils";
-import type { Project } from "@db/schema/project";
+import { superValidate } from "sveltekit-superforms";
+import { zod } from "sveltekit-superforms/adapters";
+import { projectSchema } from "@routes/settings/zod";
+import type { ProjectWithRooms } from "@types";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
@@ -23,78 +24,78 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         },
       },
     },
-  })) as Project[];
+  })) as ProjectWithRooms[];
 
-  // Initial form data
-  const form = {
-    name: "Test Name",
-    fromAddress: "Test From",
-    toAddress: "Test To",
-    rooms: [{ name: "Test Room", colorCode: "#000000" }],
-  };
-
-  console.log("Server Load Data:", { user: locals.user, projects, form });
+  console.log("Server Load Data:", { user: locals.user, projects });
 
   return {
     user: locals.user,
-    form,
+    form: await superValidate(zod(projectSchema)),
     projects,
     showCreateProject: url.searchParams.has("new"),
   };
 };
 
 export const actions = {
-  "create-project": async ({ request, locals }) => {
-    if (!locals.user) {
+  "create-project": async (event) => {
+    console.log("Action started");
+    if (!event.locals.user) {
       throw error(401, "Unauthorized");
     }
-    const formData = await request.formData();
-    const data = JSON.parse(formData.get("formData") as string);
-
+    const form = await superValidate(event, zod(projectSchema));
+    console.log("Form data received:", form.data);
+    if (!form.valid) {
+      console.log("Form validation failed:", form.errors);
+      return fail(400, { form });
+    }
     try {
-      const validatedData = projectSchema.parse(data);
-      const userId = await db
-        .select()
-        .from(user)
-        .where(eq(user.username, locals.user.username))
-        .limit(1)
-        .then((res) => res[0].id);
-
+      const USER = await db.query.user.findFirst({
+        where: eq(user.id, event.locals.user.id),
+      });
+      console.log("User found:", USER);
+      if (!USER) {
+        return fail(404, { message: "User not found" });
+      }
       const newProject = await db.transaction(async (tx) => {
         const [createdProject] = await tx
           .insert(project)
           .values({
-            userId,
-            name: validatedData.name,
-            handle: generateHandle(validatedData.name),
-            fromAddress: validatedData.fromAddress,
-            toAddress: validatedData.toAddress,
+            userId: USER.id,
+            name: form.data.name,
+            handle: generateHandle(form.data.name),
+            fromAddress: form.data.fromAddress,
+            toAddress: form.data.toAddress,
             status: "draft",
           })
           .returning();
 
-        await Promise.all(
-          validatedData.rooms.map((roomData) =>
-            tx.insert(room).values({
-              projectId: createdProject.id,
-              name: roomData.name,
-              handle: generateHandle(roomData.name),
-              colorCode: roomData.colorCode,
-            }),
-          ),
-        );
-        return createdProject.id;
+        // Process rooms if they exist
+        if (form.data.rooms?.length) {
+          await Promise.all(
+            form.data.rooms.map((roomData) =>
+              tx.insert(room).values({
+                projectId: createdProject.id,
+                name: roomData.name,
+                handle: generateHandle(roomData.name),
+                colorCode: roomData.colorCode,
+              }),
+            ),
+          );
+        }
+
+        return createdProject;
       });
 
-      return { success: true };
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return fail(400, {
-          errors: err.errors,
-          data,
-        });
+      throw redirect(303, "/dashboard");
+    } catch (error) {
+      if (error as Redirect) {
+        throw error; // Re-throw redirect
       }
-      throw error(500, "Internal server error");
+      console.error("Project Creation error:", error);
+      return fail(500, {
+        form,
+        error: "An error occurred during project creation",
+      });
     }
   },
 } satisfies Actions;

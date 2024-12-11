@@ -2,78 +2,109 @@
 <script lang="ts">
     import * as Card from "@components/ui/card";
     import { Button } from "@components/ui/button";
-    import { Progress } from "@components/ui/progress";
     import * as Dialog from "@components/ui/dialog";
     import { CreateProjectForm } from "@components/projects";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    import type { ProjectSchema } from "@server/zod";
-    import type { Project } from "@db/schema/project";
-    import type { Room } from "@db/schema/room";
     import type { ProjectWithRooms } from "@types";
-
-    const stats = {
-        activeProjects: 12,
-        totalBoxes: 156,
-        completionRate: 85,
-    };
-
-    const { form, projects } = $props<{
-        form: ProjectSchema;
-        projects: Project[];
-    }>();
+    import {
+        type SuperValidated,
+        type Infer,
+        superForm,
+    } from "sveltekit-superforms";
+    import { zodClient } from "sveltekit-superforms/adapters";
+    import { projectSchema, type ProjectSchema } from "@routes/settings/zod";
+    import type { ActionResult } from "@sveltejs/kit";
+    const {
+        data,
+        projects,
+    }: {
+        data: SuperValidated<Infer<ProjectSchema>>;
+        projects: ProjectWithRooms[];
+    } = $props();
 
     let open = $state(false);
-    let formData = $state(form);
+    let submitting = $state(false);
+
+    const form = superForm(data, {
+        validators: zodClient(projectSchema),
+        dataType: "json",
+        taintedMessage: null,
+        onSubmit: ({ cancel }) => {
+            submitting = true;
+            return async ({ result }: { result: ActionResult }) => {
+                submitting = false;
+                if (result.type === "error") {
+                    cancel();
+                }
+                // Don't handle redirect here - let SvelteKit handle it
+            };
+        },
+        onError: () => {
+            submitting = false;
+        },
+    });
+
     let activeProjectsCount = $derived(
-        projects?.filter((p: ProjectWithRooms) => p.status === "active")
-            ?.length ?? 0,
+        projects?.filter((p) => p.status === "active")?.length ?? 0,
     );
 
     let activeProjectsBoxCount = $derived(
         projects
-            ?.filter((p: Project) => p.status === "active")
-            ?.reduce((totalBoxCount: number, project: ProjectWithRooms) => {
-                return (
-                    totalBoxCount +
-                    (project.rooms?.reduce(
-                        (roomBoxCount: number, room: Room) =>
-                            roomBoxCount + (room.boxCount ?? 0),
+            ?.filter((p) => p.status === "active")
+            ?.reduce((totalBoxCount, project) => {
+                const roomBoxCount =
+                    project.rooms?.reduce(
+                        (acc, room) => acc + (room.boxCount ?? 0),
                         0,
-                    ) ?? 0)
-                );
+                    ) ?? 0;
+                return totalBoxCount + roomBoxCount;
             }, 0) ?? 0,
     );
 
     let activeProjectsItemCount = $derived(
         projects
-            ?.filter((p: Project) => p.status === "active")
-            ?.reduce((totalItemCount: number, project: ProjectWithRooms) => {
-                return (
-                    totalItemCount +
-                    (project.rooms?.reduce(
-                        (roomItemCount: number, room: Room) =>
-                            roomItemCount + (room.itemCount ?? 0),
+            ?.filter((p) => p.status === "active")
+            ?.reduce((totalItemCount, project) => {
+                const roomItemCount =
+                    project.rooms?.reduce(
+                        (acc, room) => acc + (room.itemCount ?? 0),
                         0,
-                    ) ?? 0)
-                );
+                    ) ?? 0;
+                return totalItemCount + roomItemCount;
             }, 0) ?? 0,
     );
 
     // Sync with URL state
-    $effect(() => {
-        open = $page.url.searchParams.has("new");
+    // $effect(() => {
+    //     open = $page.url.searchParams.has("new");
 
-        const formDataParam = $page.url.searchParams.get("formData");
-        if (formDataParam) {
-            try {
-                const parsed = JSON.parse(decodeURIComponent(formDataParam));
-                formData = parsed;
-            } catch (e) {
-                console.error("Failed to parse form data from URL");
-            }
+    //     const formDataParam = $page.url.searchParams.get("formData");
+    //     if (formDataParam) {
+    //         try {
+    //             const parsed = JSON.parse(decodeURIComponent(formDataParam));
+    //             formData = parsed;
+    //         } catch (e) {
+    //             console.error("Failed to parse form data from URL");
+    //         }
+    //     } else {
+    //         formData = form;
+    //     }
+    // });
+
+    $effect(() => {
+        // Close dialog and show success message if project was created
+        if ($page.url.searchParams.has("success")) {
+            open = false;
+            // Optionally show a success toast/notification here
+
+            // Clean up the URL
+            const url = new URL($page.url);
+            url.searchParams.delete("success");
+            goto(url.toString(), { replaceState: true });
         } else {
-            formData = form;
+            // Normal dialog open/close handling
+            open = $page.url.searchParams.has("new");
         }
     });
 
@@ -119,7 +150,7 @@
         </Card.Content>
     </Card.Root>
 
-    <Card.Root>
+    <!-- <Card.Root>
         <Card.Header class="pb-2">
             <Card.Description>Completion Rate</Card.Description>
             <Card.Title class="text-3xl">{stats.completionRate}%</Card.Title>
@@ -133,7 +164,7 @@
                 aria-label="Completion rate"
             />
         </Card.Footer>
-    </Card.Root>
+    </Card.Root> -->
 
     <Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && closeDialog()}>
         <Dialog.Portal>
@@ -148,11 +179,7 @@
                         them colors for easy organization.
                     </Dialog.Description>
                 </Dialog.Header>
-                <CreateProjectForm
-                    onSuccess={closeDialog}
-                    initialData={formData}
-                    onFormChange={(data) => (formData = data)}
-                />
+                <CreateProjectForm {form} {submitting} />
             </Dialog.Content>
         </Dialog.Portal>
     </Dialog.Root>

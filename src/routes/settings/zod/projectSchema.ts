@@ -21,5 +21,5 @@ const projectSchema = z.object({
     .max(20, "Maximum 20 rooms allowed"),
 });
 
-export type ProjectSchema = z.infer<typeof projectSchema>;
+export type ProjectSchema = typeof projectSchema;
 export default projectSchema;

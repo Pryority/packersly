@@ -1,12 +1,9 @@
 // src/routes/dashboard/+page.server.ts
-import { error, fail, redirect } from "@sveltejs/kit";
-import type { Actions, PageServerLoad } from "./$types";
+import { redirect } from "@sveltejs/kit";
+import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { project, user, room } from "@db/schema";
+import { project } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { projectSchema, type ProjectSchema } from "@server/zod";
-import { z } from "zod";
-import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {

@@ -3,13 +3,13 @@ import { fail, redirect, type Redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { hash } from "argon2";
 import db from "@db";
-import * as table from "@db/schema";
+import { user } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
-import { registerSchema } from "@server/zod";
 import * as auth from "@server/auth";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
+import { registerSchema } from "@routes/settings/zod";
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
@@ -22,7 +22,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   register: async (event) => {
-    // Keep the entire event object
     const form = await superValidate(event, zod(registerSchema));
     if (!form.valid) {
       return fail(400, { form });
@@ -30,7 +29,7 @@ export const actions: Actions = {
 
     try {
       const existingUser = await db.query.user.findFirst({
-        where: eq(table.user.email, form.data.email),
+        where: eq(user.email, form.data.email),
       });
 
       if (existingUser) {
@@ -43,8 +42,8 @@ export const actions: Actions = {
       const userId = generateId();
 
       // Create user
-      const [user] = await db
-        .insert(table.user)
+      const [USER] = await db
+        .insert(user)
         .values({
           id: userId,
           username: form.data.email,
