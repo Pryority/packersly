@@ -6,46 +6,28 @@
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
     import Label from "@components/ui/label/label.svelte";
-    import { projectSchema } from "@routes/settings/zod";
     import {
         type FormPath,
         type Infer,
-        type SuperValidated,
         type SuperForm,
-        superForm,
     } from "sveltekit-superforms";
     import { zodClient } from "sveltekit-superforms/adapters";
     import Trash from "lucide-svelte/icons/trash";
     import AlertCircle from "lucide-svelte/icons/alert-circle";
     import { Separator } from "@components/ui/separator";
     import boxSchema from "@routes/settings/zod/boxSchema";
-    import type { BoxSchema } from "@routes/settings/zod/boxSchema";
+    import type { BoxSchema } from "@routes/settings/zod";
     import type { ActionResult } from "@sveltejs/kit";
+    import type { Room } from "@db/schema";
 
-    const { data }: { data: SuperValidated<Infer<BoxSchema>> } = $props();
+    const {
+        form,
+        submitting,
+    }: { form: SuperForm<Infer<BoxSchema>>; submitting: boolean } = $props();
 
-    let submitting = $state(false);
-    let errorDialogOpen = $state(false);
-
-    const form = superForm(data, {
-        validators: zodClient(boxSchema),
-        dataType: "json",
-        taintedMessage: null,
-        onSubmit: ({ cancel }) => {
-            submitting = true;
-            return async ({ result }: { result: ActionResult }) => {
-                submitting = false;
-                if (result.type === "error") {
-                    cancel();
-                }
-                // Don't handle redirect here - let SvelteKit handle it
-            };
-        },
-        onError: () => {
-            submitting = false;
-        },
-    });
     const { form: formData, enhance, errors } = form;
+
+    let errorDialogOpen = $state(false);
 
     function addItem() {
         formData.update(($formData) => ({
@@ -102,7 +84,10 @@
         <Card.Content class="space-y-6">
             <div class="space-y-4">
                 <div class="flex justify-between items-center">
-                    <Label class="text-lg">Items</Label>
+                    <!-- <div class="flex items-center gap-2"> -->
+
+                    <Label class="text-lg">Items in Box</Label>
+                    <!-- </div> -->
                     <Button type="button" variant="outline" on:click={addItem}>
                         Add Item
                     </Button>
@@ -128,7 +113,7 @@
                                             <Input
                                                 bind:value={$formData.items[i]
                                                     .name}
-                                                placeholder="Item name"
+                                                placeholder="e.g. T-Shirts, Plates, Snowboard"
                                                 {...attrs}
                                             />
                                             <Form.FieldErrors
@@ -144,7 +129,7 @@
                                     name={`items.${i}.quantity` as FormPath<
                                         Infer<typeof boxSchema>
                                     >}
-                                    class="md:col-span-4"
+                                    class="md:col-span-3"
                                 >
                                     <Form.Control let:attrs>
                                         <div class="space-y-2">
@@ -163,20 +148,15 @@
                                         </div>
                                     </Form.Control>
                                 </Form.Field>
-                            </div>
-
-                            <!-- Delete Button -->
-                            <div class="flex justify-end">
                                 <Button
                                     type="button"
                                     size="sm"
                                     variant="destructive"
                                     on:click={() => removeItem(i)}
                                     disabled={$formData.items.length === 1}
-                                    class="w-full md:w-auto"
+                                    class="md:col-span-1 h-4 w-4 self-end mb-2"
                                 >
-                                    <Trash class="h-4 w-4 mr-2" />
-                                    Delete Item {i + 1}
+                                    <Trash class="h-8 w-8" />
                                 </Button>
                             </div>
 

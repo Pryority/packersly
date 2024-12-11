@@ -9,7 +9,6 @@
     import * as Table from "@components/ui/table/index.js";
     import { page } from "$app/stores";
     import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
-    import type { Box } from "lucide-svelte";
     import type { Room } from "@db/schema/room.js";
     import type { BoxSchema } from "@routes/settings/zod/boxSchema.js";
     import {
@@ -18,21 +17,45 @@
         superForm,
     } from "sveltekit-superforms";
     import { goto } from "$app/navigation";
+    import type { BoxWithOptionalItems } from "@types";
+    import { zodClient } from "sveltekit-superforms/adapters";
+    import type { ActionResult } from "@sveltejs/kit";
+    import { boxSchema } from "@routes/settings/zod";
 
     const {
         data,
     }: {
         data: {
             room: Room;
-            boxes: Box[];
+            boxes: BoxWithOptionalItems[];
             form: SuperValidated<Infer<BoxSchema>>;
         };
     } = $props();
 
     // Then use props.data.room and props.data.boxes in your template
 
-    let open = $state(false);
+    let dialogOpen = $state(false);
+    let sheetOpen = $state(false);
     let submitting = $state(false);
+
+    const form = superForm(data.form, {
+        validators: zodClient(boxSchema),
+        dataType: "json",
+        taintedMessage: null,
+        onSubmit: ({ cancel }) => {
+            submitting = true;
+            return async ({ result }: { result: ActionResult }) => {
+                submitting = false;
+                if (result.type === "error") {
+                    cancel();
+                }
+                // Don't handle redirect here - let SvelteKit handle it
+            };
+        },
+        onError: () => {
+            submitting = false;
+        },
+    });
 
     function openForm() {
         const url = new URL($page.url);
@@ -41,13 +64,16 @@
     }
 
     function closeForm() {
-        goto("/dashboard", { replaceState: true });
+        const url = new URL($page.url);
+        url.searchParams.delete("new");
+        goto(url.toString(), { replaceState: true });
     }
 
     $effect(() => {
         // Close dialog and show success message if project was created
         if ($page.url.searchParams.has("success")) {
-            open = false;
+            dialogOpen = false;
+            sheetOpen = false;
             // Optionally show a success toast/notification here
 
             // Clean up the URL
@@ -56,7 +82,9 @@
             goto(url.toString(), { replaceState: true });
         } else {
             // Normal dialog open/close handling
-            open = $page.url.searchParams.has("new");
+            const isMobile = window.innerWidth < 768; // matches your md: breakpoint
+            dialogOpen = !isMobile && $page.url.searchParams.has("new");
+            sheetOpen = isMobile && $page.url.searchParams.has("new");
         }
     });
 </script>
@@ -64,31 +92,61 @@
 <Card.Root class="m-4">
     <Card.Header>
         <Card.Title>{data.room.name}</Card.Title>
-        <Card.Description>Manage boxes in this room.</Card.Description>
+        <Card.Description
+            >Manage boxes in this room.<br />Click on a row in the table to view
+            the box.</Card.Description
+        >
     </Card.Header>
     <Card.Content>
         <Table.Root>
             <Table.Header>
                 <Table.Row>
                     <!-- <Table.Head>ID</Table.Head> -->
-                    <Table.Head>QR Code</Table.Head><Table.Head
-                        >Item Count</Table.Head
-                    >
+                    <Table.Head>QR Code</Table.Head>
+                    <Table.Head class="max-md:text-center">Boxes</Table.Head>
+                    <Table.Head class="max-md:text-center">Items</Table.Head>
                     <!-- <Table.Head>Contents</Table.Head> -->
                     <!-- <Table.Head>Notes</Table.Head> -->
-                    <Table.Head>
+                    <!-- <Table.Head>
                         <span class="sr-only">Actions</span>
-                    </Table.Head>
+                    </Table.Head> -->
                 </Table.Row>
             </Table.Header>
             <Table.Body>
                 {#each data.boxes as box}
-                    <Table.Row>
+                    <Table.Row
+                        on:click={() =>
+                            goto(`${$page.url.pathname}/box/${box.id}`)}
+                    >
                         <!-- <Table.Cell>{box.id.slice(0, 8)}</Table.Cell> -->
-                        <Table.Cell>{box.qrCode}</Table.Cell>
-                        <Table.Cell>{box.items.length}</Table.Cell>
-                        <Table.Cell>{box.notes}</Table.Cell>
                         <Table.Cell>
+                            {#if box.qrCode}
+                                <div class="w-16 h-16 md:w-32 md:h-32">
+                                    {@html box.qrCode.replace(
+                                        "<svg",
+                                        '<svg class="h-full w-full"',
+                                    )}
+                                </div>
+                            {/if}</Table.Cell
+                        >
+
+                        <Table.Cell>
+                            <span class="text-center md:text-start">
+                                {data.boxes.length}
+                            </span>
+                        </Table.Cell>
+
+                        <Table.Cell>
+                            <span class="text-center md:text-start">
+                                {#if box.items}
+                                    {box.items.length}
+                                {:else}
+                                    0
+                                {/if}
+                            </span>
+                        </Table.Cell>
+
+                        <!-- <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
                                     <Button
@@ -117,7 +175,7 @@
                                     >
                                 </DropdownMenu.Content>
                             </DropdownMenu.Root>
-                        </Table.Cell>
+                        </Table.Cell> -->
                     </Table.Row>
                 {/each}
             </Table.Body>
@@ -130,42 +188,79 @@
     </Card.Footer>
 </Card.Root>
 
-<Button type="button" on:click={openForm} class="sticky bottom-2 mx-4"
-    >Create a Box</Button
->
+<Button type="button" on:click={openForm} class="sticky bottom-2 mx-8">
+    Create a Box
+</Button>
 
-<Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
+<Dialog.Root
+    bind:open={dialogOpen}
+    onOpenChange={(isOpen) => !isOpen && closeForm()}
+>
     <Dialog.Portal class="hidden md:block">
         <Dialog.Overlay
             class="bg-background/80 backdrop-blur-sm animate-in fade-in"
         />
         <Dialog.Content class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
-            <Dialog.Header class=" top-0 bg-background z-10 pb-4">
+            <Dialog.Header class="top-0 z-10 pb-4 max-w-fit">
                 <Dialog.Title>Create New Box</Dialog.Title>
-                <Dialog.Description>
+                <Dialog.Description class="flex flex-col gap-4">
                     Update your existing project. Add boxes with items for easy
                     organization.
+                    <span class="flex items-center gap-2">
+                        <strong class="max-md:text-xs">Room Name:</strong>
+                        <span class="mad-md:text-xs">
+                            {data.room.name}
+                        </span>
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <strong class="max-md:text-xs">Room Color Code:</strong>
+                        <span
+                            class="h-4 w-4 rounded-sm"
+                            style={`background-color: ${data.room.colorCode}`}
+                        ></span>
+                        <span class="mad-md:text-xs">
+                            {data.room.colorCode}
+                        </span>
+                    </span>
                 </Dialog.Description>
             </Dialog.Header>
             <div>
-                <CreateBoxForm data={data.form} />
+                <CreateBoxForm {form} {submitting} />
             </div>
         </Dialog.Content>
     </Dialog.Portal>
 </Dialog.Root>
 
-<Sheet.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
-    <Sheet.Content
-        side="bottom"
-        class="md:hidden  max-h-[90vh]  overflow-y-auto"
-    >
+<Sheet.Root
+    bind:open={sheetOpen}
+    onOpenChange={(isOpen) => !isOpen && closeForm()}
+>
+    <Sheet.Content side="bottom" class="md:hidden max-h-[90vh] overflow-y-auto">
         <Sheet.Header class="mb-4">
             <Sheet.Title>Create New Box</Sheet.Title>
-            <Sheet.Description class="text-xs">
+            <Sheet.Description class="flex flex-col gap-4 text-xs">
                 Update your existing project. Add boxes with items for easy
-                organization.
+                organization.<br />
+                <span class="flex justify-between">
+                    <span class="flex items-center gap-2">
+                        <strong class="max-md:text-xs">Room Name:</strong>
+                        <span class="mad-md:text-xs">
+                            {data.room.name}
+                        </span>
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <strong class="max-md:text-xs">Color Code:</strong>
+                        <span
+                            class="h-4 w-4 rounded-sm"
+                            style={`background-color: ${data.room.colorCode}`}
+                        ></span>
+                        <span class="mad-md:text-xs">
+                            {data.room.colorCode}
+                        </span>
+                    </span>
+                </span>
             </Sheet.Description>
         </Sheet.Header>
-        <CreateBoxForm data={data.form} />
+        <CreateBoxForm {form} {submitting} />
     </Sheet.Content>
 </Sheet.Root>

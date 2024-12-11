@@ -6,50 +6,15 @@
     import * as DropdownMenu from "@components/ui/dropdown-menu";
     import Copy from "lucide-svelte/icons/copy";
     import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
-    import QrCode from "lucide-svelte/icons/qr-code";
     import Box from "lucide-svelte/icons/box";
     import MapPinHouse from "lucide-svelte/icons/map-pin-house";
     import House from "lucide-svelte/icons/house";
     import Gem from "lucide-svelte/icons/gem";
     import FolderSymlink from "lucide-svelte/icons/folder-symlink";
     import { page } from "$app/stores";
-    import type { Project } from "@db/schema/project";
-    import type { Room } from "@db/schema/room";
+    import { getTotalBoxes, getTotalItems } from "@utils";
 
     const { project } = $props();
-
-    let projectBoxCount = $derived(
-        project.rooms.reduce(
-            (totalBoxCount: number, project: Project & { rooms: Room[] }) => {
-                return (
-                    totalBoxCount +
-                    (project.rooms?.reduce(
-                        (roomBoxCount: number, room: Room) =>
-                            roomBoxCount + (room.boxCount ?? 0),
-                        0,
-                    ) ?? 0)
-                );
-            },
-            0,
-        ) ?? 0,
-    );
-
-    let projectItemCount = $derived(
-        project.rooms.reduce(
-            (totalItemCount: number, project: Project & { rooms: Room[] }) => {
-                return (
-                    totalItemCount +
-                    (project.rooms?.reduce(
-                        (roomBoxCount: number, room: Room) =>
-                            roomBoxCount + (room.boxCount ?? 0),
-                        0,
-                    ) ?? 0)
-                );
-            },
-            0,
-        ) ?? 0,
-    );
-    // console.log(project);
 </script>
 
 <Card.Root class="overflow-hidden m-4">
@@ -124,14 +89,14 @@
                     <div class="flex flex-col gap-1 sm:justify-between">
                         <span class="text-muted-foreground">Total Boxes</span>
                         <div class="flex items-center gap-1">
-                            <span>{projectBoxCount}</span>
+                            <span>{getTotalBoxes(project)}</span>
                             <Box size={16} />
                         </div>
                     </div>
                     <div class="flex flex-col gap-1 sm:justify-between">
                         <span class="text-muted-foreground">Total Items</span>
                         <div class="flex items-center gap-1">
-                            <span>{projectItemCount}</span>
+                            <span>{getTotalItems(project)}</span>
                             <Gem size={16} />
                         </div>
                     </div>
@@ -144,15 +109,19 @@
                 <h3 class="font-semibold">Rooms</h3>
                 <div class="grid gap-2">
                     {#each project.rooms as room}
-                        <div class="flex items-center justify-between">
+                        <a
+                            href={`${$page.url.pathname}/room/${room.handle}`}
+                            class="flex items-center justify-between p-1 rounded-md"
+                            style="border: 2px solid {room.colorCode}"
+                        >
                             <div class="flex items-center gap-2">
-                                <div
+                                <!-- <div
                                     class="h-3 w-3 rounded-full"
                                     style="background-color: {room.colorCode}"
-                                ></div>
+                                ></div> -->
                                 <span>{room.name}</span>
                             </div>
-                            <div class="flex items-center gap-4">
+                            <!-- <div class="flex items-center gap-4">
                                 <span>{room.boxCount} boxes</span>
                                 <a
                                     href={`${$page.url.pathname}/room/${room.handle}`}
@@ -162,8 +131,7 @@
                                 <!-- <span class="bg-black rounded-sm"
                                     ><QrCode class="invert" /></span
                                 > -->
-                            </div>
-                        </div>
+                        </a>
                     {/each}
                 </div>
             </div>

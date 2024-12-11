@@ -4,6 +4,9 @@ import type { PageServerLoad } from "./$types";
 import db from "@db";
 import { project } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { superValidate } from "sveltekit-superforms";
+import { zod } from "sveltekit-superforms/adapters";
+import { roomSchema } from "@routes/settings/zod";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
@@ -30,6 +33,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   return {
     project: PROJECT,
+    form: await superValidate(zod(roomSchema)),
   };
 };
 

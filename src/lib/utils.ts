@@ -100,6 +100,10 @@ export function generateHandle(name: string): string {
   return normalized;
 }
 
+export function getTotalRooms(project: ProjectData): number {
+  return project.rooms.length;
+}
+
 export function getTotalBoxes(project: ProjectData): number {
   return project.rooms.reduce((total, room) => {
     return total + (Array.isArray(room.boxes) ? room.boxes.length : 0);

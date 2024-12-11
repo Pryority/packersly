@@ -11,5 +11,5 @@ const roomSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color code"),
 });
 
-export type RoomFormData = z.infer<typeof roomSchema>;
+export type RoomSchema = typeof roomSchema;
 export default roomSchema;

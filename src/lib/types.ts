@@ -5,8 +5,10 @@ import type { Room } from "@db/schema/room";
 
 export type ProjectData = Project & {
   rooms: (Room & {
-    boxes: (Box & {
-      items?: Item[]; // Make items optional
-    })[];
+    boxes: BoxWithOptionalItems[];
   })[];
+};
+
+export type BoxWithOptionalItems = Box & {
+  items?: Item[];
 };

@@ -8,7 +8,7 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { box, item, room } from "@db/schema";
+import { box, item, room, type Box } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";

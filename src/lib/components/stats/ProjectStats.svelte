@@ -128,14 +128,14 @@
     <Card.Root>
         <Card.Header class="pb-2">
             <Card.Description>Completed Projects</Card.Description>
-            <Card.Title class="text-4xl">{activeStats.count}</Card.Title>
+            <Card.Title class="text-4xl">{completedStats.count}</Card.Title>
         </Card.Header>
         <Card.Content>
             <div class="text-muted-foreground text-xs">
-                {activeStats.boxCount} boxes
+                {completedStats.boxCount} boxes
             </div>
             <div class="text-muted-foreground text-xs">
-                {activeStats.itemCount} items
+                {completedStats.itemCount} items
             </div>
         </Card.Content>
     </Card.Root>
