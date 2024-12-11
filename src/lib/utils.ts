@@ -143,3 +143,38 @@ export function getProjectStats(
     }, 0),
   };
 }
+
+// Function to download SVG as PNG
+export function downloadQRCode(qrCode: string) {
+  if (!qrCode) return;
+
+  // Create a temporary container for the SVG
+  const container = document.createElement("div");
+  container.innerHTML = qrCode;
+  const svg = container.firstChild as SVGElement;
+
+  // Set dimensions
+  const width = 1024;
+  const height = 1024;
+
+  // Create canvas
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  // Create image from SVG
+  const image = new Image();
+  image.src = "data:image/svg+xml;base64," + btoa(qrCode);
+
+  image.onload = () => {
+    if (!ctx) return;
+    ctx.drawImage(image, 0, 0, width, height);
+
+    // Convert to PNG and download
+    const link = document.createElement("a");
+    link.download = `box-qr-code.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+}

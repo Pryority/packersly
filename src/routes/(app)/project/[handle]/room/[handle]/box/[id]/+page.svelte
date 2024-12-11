@@ -1,12 +1,13 @@
 <!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
     import Ellipsis from "lucide-svelte/icons/ellipsis";
+    import Download from "lucide-svelte/icons/download";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
     import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
-    import { page } from "$app/stores";
     import type { Box } from "@db/schema/box";
+    import { downloadQRCode } from "@utils";
 
     const { data } = $props<{
         data: {
@@ -36,8 +37,19 @@
                             '<svg class="h-full w-full"',
                         )}
                     </div>
-                    <div class="text-sm text-muted-foreground">
-                        Scan to view box contents
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="text-sm text-muted-foreground">
+                            Scan to view box contents
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            on:click={() => downloadQRCode(box.qrCode)}
+                            class="flex items-center gap-2"
+                        >
+                            <Download class="h-4 w-4" />
+                            Download QR Code
+                        </Button>
                     </div>
                 </div>
             {/if}
