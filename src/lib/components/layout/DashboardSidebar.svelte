@@ -19,7 +19,7 @@
             <span class="sr-only">Packersly</span>
         </a>
 
-        <Tooltip.Root>
+        <!-- <Tooltip.Root>
             <Tooltip.Trigger asChild let:builder>
                 <a
                     href="/dashboard"
@@ -32,9 +32,9 @@
                 </a>
             </Tooltip.Trigger>
             <Tooltip.Content side="right">Dashboard</Tooltip.Content>
-        </Tooltip.Root>
+        </Tooltip.Root> -->
 
-        <Tooltip.Root>
+        <!-- <Tooltip.Root>
             <Tooltip.Trigger asChild let:builder>
                 <a
                     href="/projects"
@@ -47,7 +47,7 @@
                 </a>
             </Tooltip.Trigger>
             <Tooltip.Content side="right">Projects</Tooltip.Content>
-        </Tooltip.Root>
+        </Tooltip.Root> -->
     </nav>
 
     <nav class="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">

@@ -10,43 +10,6 @@
     // State for the active tab
     let activeTab = $state("all");
 
-    // Sample project data
-    // const allProjects: Project[] = [
-    //     {
-    //         id: "1",
-    //         userId: "user_123",
-    //         name: "Move to 123 Main St",
-    //         fromAddress: "456 Oak Ave",
-    //         toAddress: "123 Main St",
-    //         status: "active",
-    //         itemCount: 15,
-    //         createdAt: new Date(),
-    //         updatedAt: new Date(),
-    //     },
-    //     {
-    //         id: "2",
-    //         userId: "user_123",
-    //         name: "Move to Summer House",
-    //         fromAddress: "789 Pine St",
-    //         toAddress: "321 Beach Rd",
-    //         status: "draft",
-    //         itemCount: 0,
-    //         createdAt: new Date(),
-    //         updatedAt: new Date(),
-    //     },
-    //     {
-    //         id: "3",
-    //         userId: "user_123",
-    //         name: "Office Relocation",
-    //         fromAddress: "101 Business Ave",
-    //         toAddress: "202 Commerce St",
-    //         status: "completed",
-    //         itemCount: 25,
-    //         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    //         updatedAt: new Date(),
-    //     },
-    // ];
-
     // Filtered projects
     let projects = $state<Project[] | []>([]);
 
@@ -71,19 +34,19 @@
 
 <Tabs.Root value={activeTab} onValueChange={setTab}>
     <div class="flex items-center">
-        <Tabs.List>
+        <Tabs.List class="w-full">
             <Tabs.Trigger value="all">All</Tabs.Trigger>
             <Tabs.Trigger value="active">Active</Tabs.Trigger>
             <Tabs.Trigger value="draft">Draft</Tabs.Trigger>
             <Tabs.Trigger value="completed">Completed</Tabs.Trigger>
         </Tabs.List>
-        <div class="ml-auto">
+        <!-- <div class="ml-auto">
             <ProjectFilters />
-        </div>
+        </div> -->
     </div>
 </Tabs.Root>
 
-<Card.Root>
+<Card.Root class="min-w-0">
     <Card.Header class="px-7">
         <Card.Title>Projects</Card.Title>
         <Card.Description>

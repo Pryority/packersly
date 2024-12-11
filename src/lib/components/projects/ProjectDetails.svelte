@@ -74,10 +74,10 @@
         </div>
 
         <div class="ml-auto flex items-center gap-1">
-            <Button size="sm" variant="outline" class="h-8 gap-1">
+            <!-- <Button size="sm" variant="outline" class="h-8 gap-1">
                 <QrCode class="h-3.5 w-3.5" />
                 <span>Generate QR Codes</span>
-            </Button>
+            </Button> -->
             <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild let:builder>
                     <Button
@@ -107,28 +107,28 @@
             <div class="grid gap-3">
                 <h3 class="font-semibold">Project Details</h3>
                 <div class="grid gap-2">
-                    <div class="flex justify-between">
+                    <div class="flex flex-col gap-1 sm:justify-between">
                         <span class="text-muted-foreground">From</span>
                         <div class="flex items-center gap-1">
                             <span>{project.fromAddress}</span>
                             <House size={16} />
                         </div>
                     </div>
-                    <div class="flex justify-between">
+                    <div class="flex flex-col gap-1 sm:justify-between">
                         <span class="text-muted-foreground">To</span>
                         <div class="flex items-center gap-1">
                             <span>{project.toAddress}</span>
                             <MapPinHouse size={16} />
                         </div>
                     </div>
-                    <div class="flex justify-between">
+                    <div class="flex flex-col gap-1 sm:justify-between">
                         <span class="text-muted-foreground">Total Boxes</span>
                         <div class="flex items-center gap-1">
                             <span>{projectBoxCount}</span>
                             <Box size={16} />
                         </div>
                     </div>
-                    <div class="flex justify-between">
+                    <div class="flex flex-col gap-1 sm:justify-between">
                         <span class="text-muted-foreground">Total Items</span>
                         <div class="flex items-center gap-1">
                             <span>{projectItemCount}</span>

@@ -3,7 +3,6 @@
     import * as Sheet from "@components/ui/sheet";
     import Package2 from "lucide-svelte/icons/package-2";
     import House from "lucide-svelte/icons/house";
-    import Box from "lucide-svelte/icons/box";
     import Settings from "lucide-svelte/icons/settings";
 </script>
 
@@ -25,13 +24,13 @@
             Dashboard
         </a>
 
-        <a
+        <!-- <a
             href="/projects"
             class="text-foreground flex items-center gap-4 px-2.5"
         >
             <Box class="h-5 w-5" />
             Projects
-        </a>
+        </a> -->
 
         <a
             href="/settings"

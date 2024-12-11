@@ -3,6 +3,7 @@
     import * as Card from "@components/ui/card";
     import { Button } from "@components/ui/button";
     import * as Dialog from "@components/ui/dialog";
+    import * as Sheet from "@components/ui/sheet";
     import { CreateProjectForm } from "@components/projects";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
@@ -108,19 +109,19 @@
         }
     });
 
-    function openDialog() {
+    function openForm() {
         const url = new URL($page.url);
         url.searchParams.set("new", "true");
         goto(url.toString(), { replaceState: true });
     }
 
-    function closeDialog() {
+    function closeForm() {
         goto("/dashboard", { replaceState: true });
     }
 </script>
 
 <div
-    class="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4"
+    class="grid gap-4 min-w-0 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4"
 >
     <Card.Root class="sm:col-span-2">
         <Card.Header class="pb-3">
@@ -131,7 +132,7 @@
             </Card.Description>
         </Card.Header>
         <Card.Footer>
-            <Button on:click={openDialog}>Create New Project</Button>
+            <Button on:click={openForm}>Create New Project</Button>
         </Card.Footer>
     </Card.Root>
 
@@ -166,21 +167,44 @@
         </Card.Footer>
     </Card.Root> -->
 
-    <Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && closeDialog()}>
-        <Dialog.Portal>
+    <Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
+        <Dialog.Portal class="hidden md:block">
             <Dialog.Overlay
                 class="bg-background/80 backdrop-blur-sm animate-in fade-in"
             />
-            <Dialog.Content class="sm:max-w-[625px]">
-                <Dialog.Header>
+            <Dialog.Content
+                class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto"
+            >
+                <Dialog.Header class=" top-0 bg-background z-10 pb-4">
                     <Dialog.Title>Create New Project</Dialog.Title>
                     <Dialog.Description>
                         Set up your new moving project. Add rooms and assign
                         them colors for easy organization.
                     </Dialog.Description>
                 </Dialog.Header>
-                <CreateProjectForm {form} {submitting} />
+                <div>
+                    <CreateProjectForm {form} {submitting} />
+                </div>
             </Dialog.Content>
         </Dialog.Portal>
     </Dialog.Root>
+    <script lang="ts">
+        import * as Sheet from "$lib/components/ui/sheet";
+    </script>
+
+    <Sheet.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
+        <Sheet.Content
+            side="bottom"
+            class="md:hidden  max-h-[90vh]  overflow-y-auto"
+        >
+            <Sheet.Header class="mb-4">
+                <Sheet.Title>Create New Project</Sheet.Title>
+                <Sheet.Description class="text-xs">
+                    Set up your new moving project. Add rooms and assign them
+                    colors for easy organization.
+                </Sheet.Description>
+            </Sheet.Header>
+            <CreateProjectForm {form} {submitting} />
+        </Sheet.Content>
+    </Sheet.Root>
 </div>
