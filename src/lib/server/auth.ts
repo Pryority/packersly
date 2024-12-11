@@ -79,6 +79,10 @@ export function setSessionTokenCookie(
   event.cookies.set(sessionCookieName, token, {
     expires: expiresAt,
     path: "/",
+    // Add these settings for better iOS compatibility
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
   });
 }
 

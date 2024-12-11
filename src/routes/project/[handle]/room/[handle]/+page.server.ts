@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
+import QRCode from "qrcode";
 
 export const load: PageServerLoad = async ({ locals, url, params }) => {
   if (!locals.user) {
@@ -48,7 +49,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 };
 
 export const actions = {
-  "create-box": async ({ locals, request, params }) => {
+  "create-box": async ({ locals, request, params, url }) => {
     // Destructure params from event
     console.log("Action started");
     if (!locals.user) {
@@ -86,14 +87,29 @@ export const actions = {
       }
       // Use a transaction to ensure all operations succeed or fail together
       const newBox = await db.transaction(async (tx) => {
-        // Create the box first
+        const accessToken = crypto.randomUUID();
+        const boxId = crypto.randomUUID();
+
+        // Generate QR code that links to the box page
+        // We can either use the private box route with ID or the public route with access token
+        const boxUrl = `${url.origin}/project/${handle}/room/${ROOM.handle}/box/${boxId}`;
+        // Alternative public URL: `${url.origin}/public/box/${accessToken}`
+
+        const qrCode = await QRCode.toString(boxUrl, {
+          type: "svg",
+          margin: 1,
+          width: 256,
+        });
+
+        // Create the box
         const [createdBox] = await tx
           .insert(box)
           .values({
+            id: boxId,
             roomId: ROOM.id,
-            qrCode: crypto.randomUUID(), // Generate a unique QR code
-            notes: null, // Add notes if you have them in your form
-            accessToken: crypto.randomUUID(), // Generate a unique access token
+            qrCode, // Store the SVG string
+            notes: null,
+            accessToken,
             isPublic: false,
           })
           .returning();

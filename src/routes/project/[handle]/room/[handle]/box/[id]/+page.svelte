@@ -29,8 +29,16 @@
         <Card.Description>
             View and manage items in this box.
             {#if box.qrCode}
-                <div class="mt-2">
-                    QR Code: {box.qrCode}
+                <div class="mt-4 flex flex-col items-center gap-2">
+                    <div class="w-32 h-32">
+                        {@html box.qrCode.replace(
+                            "<svg",
+                            '<svg class="h-full w-full"',
+                        )}
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                        Scan to view box contents
+                    </div>
                 </div>
             {/if}
         </Card.Description>
