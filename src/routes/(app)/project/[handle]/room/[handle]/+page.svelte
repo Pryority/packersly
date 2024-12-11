@@ -21,6 +21,7 @@
     import { zodClient } from "sveltekit-superforms/adapters";
     import type { ActionResult } from "@sveltejs/kit";
     import { boxSchema } from "@routes/settings/zod";
+    import { cn } from "@utils";
 
     const {
         data,
@@ -45,8 +46,8 @@
         onSubmit: ({ cancel }) => {
             submitting = true;
             return async ({ result }: { result: ActionResult }) => {
-                submitting = false;
-                if (result.type === "error") {
+                if (result.type === "error" || result.type === "failure") {
+                    submitting = false;
                     cancel();
                 }
                 // Don't handle redirect here - let SvelteKit handle it
@@ -90,63 +91,68 @@
 </script>
 
 <Card.Root class="m-4">
-    <Card.Header>
+    <Card.Header class={cn(data.boxes.length === 0 ? "pb-4" : "")}>
         <Card.Title>{data.room.name}</Card.Title>
         <Card.Description
-            >Manage boxes in this room.<br />Click on a row in the table to view
-            the box.</Card.Description
+            >Manage boxes in this room.
+            {#if data.boxes.length > 0}
+                <br />Click on a row in the table to view the box.
+            {/if}</Card.Description
         >
     </Card.Header>
-    <Card.Content>
-        <Table.Root>
-            <Table.Header>
-                <Table.Row>
-                    <!-- <Table.Head>ID</Table.Head> -->
-                    <Table.Head>QR Code</Table.Head>
-                    <Table.Head class="max-md:text-center">Boxes</Table.Head>
-                    <Table.Head class="max-md:text-center">Items</Table.Head>
-                    <!-- <Table.Head>Contents</Table.Head> -->
-                    <!-- <Table.Head>Notes</Table.Head> -->
-                    <!-- <Table.Head>
+    {#if data.boxes.length > 0}
+        <Card.Content>
+            <Table.Root>
+                <Table.Header>
+                    <Table.Row>
+                        <!-- <Table.Head>ID</Table.Head> -->
+                        <Table.Head>QR Code</Table.Head>
+                        <Table.Head class="max-md:text-center">Boxes</Table.Head
+                        >
+                        <Table.Head class="max-md:text-center">Items</Table.Head
+                        >
+                        <!-- <Table.Head>Contents</Table.Head> -->
+                        <!-- <Table.Head>Notes</Table.Head> -->
+                        <!-- <Table.Head>
                         <span class="sr-only">Actions</span>
                     </Table.Head> -->
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {#each data.boxes as box}
-                    <Table.Row
-                        on:click={() =>
-                            goto(`${$page.url.pathname}/box/${box.id}`)}
-                    >
-                        <!-- <Table.Cell>{box.id.slice(0, 8)}</Table.Cell> -->
-                        <Table.Cell>
-                            {#if box.qrCode}
-                                <div class="w-16 h-16 md:w-32 md:h-32">
-                                    {@html box.qrCode.replace(
-                                        "<svg",
-                                        '<svg class="h-full w-full"',
-                                    )}
-                                </div>
-                            {/if}</Table.Cell
+                    </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                    {#each data.boxes as box}
+                        <Table.Row
+                            on:click={() =>
+                                goto(`${$page.url.pathname}/box/${box.id}`)}
                         >
+                            <!-- <Table.Cell>{box.id.slice(0, 8)}</Table.Cell> -->
+                            <Table.Cell>
+                                {#if box.qrCode}
+                                    <div class="w-16 h-16 md:w-32 md:h-32">
+                                        {@html box.qrCode.replace(
+                                            "<svg",
+                                            '<svg class="h-full w-full"',
+                                        )}
+                                    </div>
+                                {/if}</Table.Cell
+                            >
 
-                        <Table.Cell>
-                            <span class="text-center md:text-start">
-                                {data.boxes.length}
-                            </span>
-                        </Table.Cell>
+                            <Table.Cell>
+                                <span class="text-center md:text-start">
+                                    {data.boxes.length}
+                                </span>
+                            </Table.Cell>
 
-                        <Table.Cell>
-                            <span class="text-center md:text-start">
-                                {#if box.items}
-                                    {box.items.length}
-                                {:else}
-                                    0
-                                {/if}
-                            </span>
-                        </Table.Cell>
+                            <Table.Cell>
+                                <span class="text-center md:text-start">
+                                    {#if box.items}
+                                        {box.items.length}
+                                    {:else}
+                                        0
+                                    {/if}
+                                </span>
+                            </Table.Cell>
 
-                        <!-- <Table.Cell>
+                            <!-- <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
                                     <Button
@@ -176,19 +182,24 @@
                                 </DropdownMenu.Content>
                             </DropdownMenu.Root>
                         </Table.Cell> -->
-                    </Table.Row>
-                {/each}
-            </Table.Body>
-        </Table.Root>
-    </Card.Content>
-    <Card.Footer>
-        <div class="text-muted-foreground text-xs">
-            Showing <strong>{data.boxes.length}</strong> boxes
-        </div>
-    </Card.Footer>
+                        </Table.Row>
+                    {/each}
+                </Table.Body>
+            </Table.Root>
+        </Card.Content>
+        <Card.Footer>
+            <div class="text-muted-foreground text-xs">
+                Showing <strong>{data.boxes.length}</strong> boxes
+            </div>
+        </Card.Footer>
+    {/if}
 </Card.Root>
 
-<Button type="button" on:click={openForm} class="sticky bottom-2 mx-8">
+<Button
+    type="button"
+    on:click={openForm}
+    class="sticky bottom-2 mx-8 md:mx-[40vw]"
+>
     Create a Box
 </Button>
 

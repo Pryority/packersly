@@ -1,12 +1,19 @@
 // src/routes/dashboard/[handle]/+page.server.ts
-import { redirect } from "@sveltejs/kit";
+import {
+  error,
+  fail,
+  redirect,
+  type Actions,
+  type Redirect,
+} from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { project } from "@db/schema";
+import { project, room } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { roomSchema } from "@routes/settings/zod";
+import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
@@ -37,58 +44,86 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   };
 };
 
-// export const actions = {
-//   "create-project": async ({ request, locals }) => {
-//     if (!locals.user) {
-//       throw error(401, "Unauthorized");
-//     }
-//     const formData = await request.formData();
-//     const data = JSON.parse(formData.get("formData") as string);
+export const actions = {
+  "create-room": async ({ locals, request, params, url }) => {
+    console.log("Action started");
+    if (!locals.user) {
+      throw error(401, "Unauthorized");
+    }
 
-//     try {
-//       const validatedData = projectSchema.parse(data);
-//       const userId = await db
-//         .select()
-//         .from(user)
-//         .where(eq(user.username, locals.user.username))
-//         .limit(1)
-//         .then((res) => res[0].id);
+    const form = await superValidate(request, zod(roomSchema));
+    console.log("Form data received:", form.data);
+    if (!form.valid) {
+      console.log("Form validation failed:", form.errors);
+      return fail(400, { form });
+    }
 
-//       const newProject = await db.transaction(async (tx) => {
-//         const [createdProject] = await tx
-//           .insert(project)
-//           .values({
-//             userId,
-//             name: validatedData.name,
-//             handle: generateHandle(validatedData.name),
-//             fromAddress: validatedData.fromAddress,
-//             toAddress: validatedData.toAddress,
-//             status: "draft",
-//           })
-//           .returning();
+    try {
+      const handle = params.handle;
+      if (!handle) {
+        return fail(400, {
+          form,
+          message: "Project handle is required",
+        });
+      }
 
-//         await Promise.all(
-//           validatedData.rooms.map((roomData) =>
-//             tx.insert(room).values({
-//               projectId: createdProject.id,
-//               name: roomData.name,
-//               handle: generateHandle(roomData.name),
-//               colorCode: roomData.colorCode,
-//             }),
-//           ),
-//         );
-//         return createdProject.id;
-//       });
+      // First get the project (not room) to verify ownership
+      const PROJECT = await db.query.project.findFirst({
+        where: eq(project.handle, handle),
+        columns: {
+          id: true,
+          userId: true,
+        },
+      });
 
-//       return { success: true };
-//     } catch (err) {
-//       if (err instanceof z.ZodError) {
-//         return fail(400, {
-//           errors: err.errors,
-//           data,
-//         });
-//       }
-//       throw error(500, "Internal server error");
-//     }
-//   },
-// } satisfies Actions;
+      if (!PROJECT) {
+        return fail(404, {
+          form,
+          message: "Project not found",
+        });
+      }
+
+      // Verify user owns the project
+      if (PROJECT.userId !== locals.user.id) {
+        throw error(
+          403,
+          "You don't have permission to create rooms in this project",
+        );
+      }
+
+      // Use a transaction to ensure all operations succeed or fail together
+      const newRoom = await db.transaction(async (tx) => {
+        const roomId = crypto.randomUUID();
+        const roomHandle = generateHandle(form.data.name); // Make sure to import generateHandle
+
+        // Create the room
+        const [createdRoom] = await tx
+          .insert(room)
+          .values({
+            id: roomId,
+            projectId: PROJECT.id,
+            name: form.data.name,
+            handle: roomHandle,
+            colorCode: form.data.colorCode,
+            boxCount: 0, // Initialize counters
+            itemCount: 0,
+          })
+          .returning();
+
+        return createdRoom;
+      });
+
+      // Redirect to the room view page
+      throw redirect(303, `/project/${handle}/room/${newRoom.handle}`);
+    } catch (error) {
+      if (error as Redirect) {
+        throw error; // Re-throw redirect
+      }
+      console.error("Room Creation error:", error);
+      return fail(500, {
+        form,
+        message: "An error occurred during room creation",
+      });
+    }
+  },
+} satisfies Actions;

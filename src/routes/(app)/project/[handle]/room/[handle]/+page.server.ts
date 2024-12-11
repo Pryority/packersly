@@ -8,8 +8,8 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { box, item, room, type Box } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { box, item, project, room, type Box } from "@db/schema";
+import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
@@ -50,40 +50,57 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 
 export const actions = {
   "create-box": async ({ locals, request, params, url }) => {
-    // Destructure params from event
-    console.log("Action started");
+    console.log("Full params object:", JSON.stringify(params));
+    console.log("Full URL:", url.pathname);
+
     if (!locals.user) {
       throw error(401, "Unauthorized");
     }
 
     const form = await superValidate(request, zod(boxSchema));
-    console.log("Form data received:", form.data);
-
-    if (!form.valid) {
-      console.log("Form validation failed:", form.errors);
-      return fail(400, { form });
-    }
 
     try {
-      // Check if handle exists and type assert it
-      const handle = params.handle;
-      if (!handle) {
+      // Get project handle from URL pathname
+      const pathParts = url.pathname.split("/");
+      const projectHandle = pathParts[2]; // /project/[projectHandle]/room/[roomHandle]
+      const roomHandle = params.handle;
+
+      console.log("Path parts:", pathParts);
+      console.log("Extracted handles:", { projectHandle, roomHandle });
+
+      if (!roomHandle || !projectHandle) {
         return fail(400, {
           form,
-          message: "Room handle is required",
+          message: "Both project and room handles are required",
         });
       }
 
-      // Verify room ownership
-      const ROOM = await db.query.room.findFirst({
-        where: eq(room.handle, handle),
-        with: {
-          project: {
-            columns: {
-              userId: true,
-            },
-          },
+      const PROJECT = await db.query.project.findFirst({
+        where: eq(project.handle, projectHandle),
+        columns: {
+          id: true,
+          userId: true,
+          handle: true,
         },
+      });
+
+      if (!PROJECT) {
+        return fail(404, {
+          form,
+          message: "Project not found",
+        });
+      }
+
+      if (PROJECT.userId !== locals.user.id) {
+        throw error(
+          403,
+          "You don't have permission to create boxes in this project",
+        );
+      }
+
+      // Verify room ownership and get the room directly
+      const ROOM = await db.query.room.findFirst({
+        where: and(eq(room.handle, roomHandle), eq(room.projectId, PROJECT.id)),
       });
 
       if (!ROOM) {
@@ -93,14 +110,6 @@ export const actions = {
         });
       }
 
-      // Verify user owns the project
-      if (ROOM.project.userId !== locals.user.id) {
-        throw error(
-          403,
-          "You don't have permission to create boxes in this room",
-        );
-      }
-
       // Use a transaction to ensure all operations succeed or fail together
       const newBox = await db.transaction(async (tx) => {
         const accessToken = crypto.randomUUID();
@@ -108,7 +117,7 @@ export const actions = {
 
         // Create a URL with both the box ID and access token
         const boxUrl = new URL(
-          `${url.origin}/project/${handle}/room/${ROOM.handle}/box/${boxId}`,
+          `${url.origin}/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
         );
         boxUrl.searchParams.set("token", accessToken);
 

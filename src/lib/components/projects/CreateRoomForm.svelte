@@ -48,7 +48,7 @@
 </script>
 
 <Card.Root>
-    <form method="POST" action="?/create-project" use:enhance>
+    <form method="POST" action="?/create-room" use:enhance>
         <Card.Content class="space-y-4">
             <Form.Field {form} name="name">
                 <Form.Control let:attrs>
@@ -72,23 +72,26 @@
 
             <Form.Field {form} name="colorCode">
                 <Form.Control let:attrs>
-                    <div class="flex items-center gap-1">
-                        <Form.Label class="text-xs whitespace-nowrap"
+                    <div class="flex flex-col gap-1">
+                        <Form.Label class="max-md:text-xs whitespace-nowrap"
                             >Room Color</Form.Label
                         >
                         <Input
                             type="color"
                             bind:value={$formData.colorCode}
-                            class="w-20 h-9 p-0 cursor-pointer"
+                            class="w-full h-9 p-0 cursor-pointer"
                             {...attrs}
                         />
                         <Form.FieldErrors class="hidden md:block" />
+                        <Form.Description>
+                            Organize your room with a color
+                        </Form.Description>
                     </div>
                 </Form.Control>
             </Form.Field>
         </Card.Content>
 
-        <Card.Footer>
+        <Card.Footer class="justify-center">
             <Button type="submit" disabled={submitting}>
                 {submitting ? "Creating..." : "Create Room"}
             </Button>

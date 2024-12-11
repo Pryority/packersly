@@ -45,8 +45,8 @@
         onSubmit: ({ cancel }) => {
             submitting = true;
             return async ({ result }: { result: ActionResult }) => {
-                submitting = false;
-                if (result.type === "error") {
+                if (result.type === "error" || result.type === "failure") {
+                    submitting = false;
                     cancel();
                 }
                 // Don't handle redirect here - let SvelteKit handle it
@@ -175,7 +175,11 @@
     </Card.Footer>
 </Card.Root>
 
-<Button type="button" on:click={openForm} class="sticky bottom-2 mx-8">
+<Button
+    type="button"
+    on:click={openForm}
+    class="sticky bottom-2 mx-8 md:mx-[40vw]"
+>
     Create a Room
 </Button>
 

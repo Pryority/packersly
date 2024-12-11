@@ -30,7 +30,7 @@
             View and manage items in this box.
             {#if box.qrCode}
                 <div class="mt-4 flex flex-col items-center gap-2">
-                    <div class="w-32 h-32">
+                    <div class="w-64 h-64">
                         {@html box.qrCode.replace(
                             "<svg",
                             '<svg class="h-full w-full"',
