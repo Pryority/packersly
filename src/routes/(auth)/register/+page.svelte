@@ -1,6 +1,8 @@
 <script lang="ts">
     import { RegisterForm } from "@components/auth";
     import { AuthLayout } from "@components/layout";
+
+    const { data } = $props();
 </script>
 
 <svelte:head>
@@ -10,5 +12,5 @@
 
 <AuthLayout imageUrl="/box-bg.jpg">
     <h1 class="text-2xl font-bold mb-6">Create Your Account</h1>
-    <RegisterForm />
+    <RegisterForm data={data.form} />
 </AuthLayout>

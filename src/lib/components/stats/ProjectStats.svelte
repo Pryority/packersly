@@ -10,6 +10,7 @@
     import type { ProjectSchema } from "@server/zod";
     import type { Project } from "@db/schema/project";
     import type { Room } from "@db/schema/room";
+    import type { ProjectWithRooms } from "@types";
 
     const stats = {
         activeProjects: 12,
@@ -19,57 +20,44 @@
 
     const { form, projects } = $props<{
         form: ProjectSchema;
-        projects: Project & { rooms: Room[] }[];
+        projects: Project[];
     }>();
 
     let open = $state(false);
     let formData = $state(form);
     let activeProjectsCount = $derived(
-        projects?.filter(
-            (p: Project & { rooms: Room[] }) => p.status === "active",
-        )?.length ?? 0,
+        projects?.filter((p: ProjectWithRooms) => p.status === "active")
+            ?.length ?? 0,
     );
 
     let activeProjectsBoxCount = $derived(
         projects
             ?.filter((p: Project) => p.status === "active")
-            ?.reduce(
-                (
-                    totalBoxCount: number,
-                    project: Project & { rooms: Room[] },
-                ) => {
-                    return (
-                        totalBoxCount +
-                        (project.rooms?.reduce(
-                            (roomBoxCount: number, room: Room) =>
-                                roomBoxCount + (room.boxCount ?? 0),
-                            0,
-                        ) ?? 0)
-                    );
-                },
-                0,
-            ) ?? 0,
+            ?.reduce((totalBoxCount: number, project: ProjectWithRooms) => {
+                return (
+                    totalBoxCount +
+                    (project.rooms?.reduce(
+                        (roomBoxCount: number, room: Room) =>
+                            roomBoxCount + (room.boxCount ?? 0),
+                        0,
+                    ) ?? 0)
+                );
+            }, 0) ?? 0,
     );
 
     let activeProjectsItemCount = $derived(
         projects
             ?.filter((p: Project) => p.status === "active")
-            ?.reduce(
-                (
-                    totalItemCount: number,
-                    project: Project & { rooms: Room[] },
-                ) => {
-                    return (
-                        totalItemCount +
-                        (project.rooms?.reduce(
-                            (roomItemCount: number, room: Room) =>
-                                roomItemCount + (room.itemCount ?? 0),
-                            0,
-                        ) ?? 0)
-                    );
-                },
-                0,
-            ) ?? 0,
+            ?.reduce((totalItemCount: number, project: ProjectWithRooms) => {
+                return (
+                    totalItemCount +
+                    (project.rooms?.reduce(
+                        (roomItemCount: number, room: Room) =>
+                            roomItemCount + (room.itemCount ?? 0),
+                        0,
+                    ) ?? 0)
+                );
+            }, 0) ?? 0,
     );
 
     // Sync with URL state

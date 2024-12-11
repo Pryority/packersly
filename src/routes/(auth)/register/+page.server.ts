@@ -1,6 +1,6 @@
 // src/routes/register/+page.server.ts
-import { fail, redirect } from "@sveltejs/kit";
-import type { Actions } from "./$types";
+import { fail, redirect, type Redirect } from "@sveltejs/kit";
+import type { Actions, PageServerLoad } from "./$types";
 import { hash } from "argon2";
 import db from "@db";
 import * as table from "@db/schema";
@@ -8,65 +8,70 @@ import { eq } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { registerSchema } from "@server/zod";
 import * as auth from "@server/auth";
+import { superValidate } from "sveltekit-superforms";
+import { zod } from "sveltekit-superforms/adapters";
+
+export const load: PageServerLoad = async ({ locals }) => {
+  if (locals.user) {
+    return redirect(303, "/dashboard");
+  }
+  return {
+    form: await superValidate(zod(registerSchema)),
+  };
+};
 
 export const actions: Actions = {
   register: async (event) => {
-    const formData = Object.fromEntries(await event.request.formData());
-    console.log("Received form data:", formData);
+    // Keep the entire event object
+    const form = await superValidate(event, zod(registerSchema));
+    if (!form.valid) {
+      return fail(400, { form });
+    }
 
     try {
-      const result = registerSchema.safeParse(formData);
-      if (!result.success) {
-        console.log("Validation failed:", result.error.flatten());
-        return fail(400, {
-          error: result.error.flatten().fieldErrors,
-          data: formData,
-        });
-      }
-
-      console.log("Validation passed:", result.data);
-
       const existingUser = await db.query.user.findFirst({
-        where: eq(table.user.email, result.data.email),
+        where: eq(table.user.email, form.data.email),
       });
-
-      console.log("Existing user check:", existingUser);
 
       if (existingUser) {
         return fail(400, {
           error: { email: "Email already registered" },
-          data: formData,
+          email: form.data.email,
         });
       }
 
       const userId = generateId();
-      const sessionToken = auth.generateSessionToken();
-      console.log("Generated IDs:", { userId, sessionToken });
 
       // Create user
       const [user] = await db
         .insert(table.user)
         .values({
           id: userId,
-          username: result.data.email,
-          email: result.data.email,
-          passwordHash: await hash(result.data.password),
-          firstName: result.data.first_name,
-          lastName: result.data.last_name,
+          username: form.data.email,
+          email: form.data.email,
+          passwordHash: await hash(form.data.password),
+          firstName: form.data.firstName,
+          lastName: form.data.lastName,
           userType: "client",
         })
         .returning();
 
-      console.log("User created:", user);
-      console.log("Redirecting to dashboard...");
+      if (user) {
+        const sessionToken = auth.generateSessionToken();
+        const session = await auth.createSession(sessionToken, userId);
+        auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 
-      // Return the redirect
-      return redirect(302, "/dashboard");
+        // Use 303 redirect for POST requests
+        throw redirect(303, "/dashboard");
+      }
     } catch (error) {
+      if (error as Redirect) {
+        throw error; // Re-throw redirect
+      }
       console.error("Registration error:", error);
       return fail(500, {
-        error: { form: "An error occurred during registration" },
-        data: formData,
+        form,
+        error: "An error occurred during registration",
       });
     }
   },

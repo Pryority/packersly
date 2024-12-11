@@ -4,14 +4,10 @@
     import * as Form from "@components/ui/form";
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
-    import type { ActionResult, SubmitFunction } from "@sveltejs/kit";
+    import type { SubmitFunction } from "@sveltejs/kit";
     import { enhance } from "$app/forms";
     import { z } from "zod";
-    import {
-        type SuperValidated,
-        type Infer,
-        superForm,
-    } from "sveltekit-superforms";
+    import { superForm } from "sveltekit-superforms";
     import { zodClient } from "sveltekit-superforms/adapters";
     import Label from "@components/ui/label/label.svelte";
 
@@ -71,7 +67,7 @@
         onFormChange(formData);
     });
 
-    let errors = $state<Record<string, string>>({});
+    // let errors = $state<Record<string, string>>({});
     let fieldErrors = $state<Record<string, string>>({});
 
     function addRoom() {
@@ -107,7 +103,7 @@
             if (result.type === "success") {
                 onSuccess();
             } else if (result.type === "failure") {
-                errors = result.data?.errors || {};
+                cancel();
             }
         };
     };

@@ -56,13 +56,15 @@
         <DropdownMenu.Item>Profile</DropdownMenu.Item>
         <DropdownMenu.Item>Settings</DropdownMenu.Item>
         <DropdownMenu.Separator />
-        <DropdownMenu.Item
-            ><Button
-                size="sm"
-                variant="ghost"
-                class="h-4 px-0"
-                formaction="/logout?/logout">Logout</Button
-            ></DropdownMenu.Item
-        >
+        <form method="POST" action="/logout?/logout">
+            <DropdownMenu.Item
+                ><Button
+                    size="sm"
+                    variant="ghost"
+                    class="h-4 px-0"
+                    type="submit">Logout</Button
+                ></DropdownMenu.Item
+            >
+        </form>
     </DropdownMenu.Content>
 </DropdownMenu.Root>

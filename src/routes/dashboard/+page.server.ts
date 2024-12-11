@@ -7,13 +7,14 @@ import { eq } from "drizzle-orm";
 import { projectSchema, type ProjectSchema } from "@server/zod";
 import { z } from "zod";
 import { generateHandle } from "@utils";
+import type { Project } from "@db/schema/project";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  const projects = await db.query.project.findMany({
+  const projects = (await db.query.project.findMany({
     where: eq(project.userId, locals.user.id),
     with: {
       rooms: {
@@ -22,7 +23,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         },
       },
     },
-  });
+  })) as Project[];
 
   // Initial form data
   const form = {
