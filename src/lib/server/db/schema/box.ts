@@ -9,7 +9,6 @@ const box = pgTable("box", {
     .notNull()
     .references(() => room.id),
   qrCode: text("qr_code").notNull().unique(),
-  contents: text("contents").notNull(),
   notes: text("notes"),
   accessToken: text("access_token").notNull().unique(),
   isPublic: boolean("is_public").notNull().default(false),

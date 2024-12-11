@@ -1,30 +1,28 @@
-// src/routes/dashboard/[handle]/+page.server.ts
+// src/routes/project/[handle]/room/[handle]/box/[id]/+page.server.ts
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { room } from "@db/schema";
+import { box } from "@db/schema";
 import { eq } from "drizzle-orm";
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  console.log(url);
-
-  const urlPathname = url.pathname; // "/project/the-big-move"
-  const pathSegments = urlPathname.split("/");
-  const roomHandle = pathSegments[pathSegments.length - 1]; // "the-big-move"
-  const ROOMS = await db.query.room.findMany({
-    where: eq(room.handle, roomHandle),
+  const BOX = await db.query.box.findFirst({
+    where: eq(box.id, params.id),
     with: {
-      boxes: true,
+      items: true,
+      room: true, // Include room data if needed
     },
   });
 
-  console.log("[Room Handle Page Server] Load Data:", { ROOMS });
+  if (!BOX) {
+    throw redirect(302, "/dashboard"); // or handle "box not found" differently
+  }
 
   return {
-    rooms: ROOMS,
+    box: BOX,
   };
 };

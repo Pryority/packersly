@@ -23,6 +23,8 @@
         $props();
     const { form: formData, enhance, errors } = form;
 
+    let errorDialogOpen = $state(false);
+
     function addRoom() {
         formData.update(($formData) => ({
             ...$formData,
@@ -36,15 +38,6 @@
             rooms: $formData.rooms.filter((_, i) => i !== index),
         }));
     }
-
-    let errorDialogOpen = $state(false);
-
-    // Show error dialog when there are errors (on mobile/tablet only)
-    $effect(() => {
-        if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
-            errorDialogOpen = true;
-        }
-    });
 
     // Function to format field errors for display
     function getFormattedErrors() {
@@ -64,6 +57,13 @@
         }
         return errList;
     }
+
+    // Show error dialog when there are errors (on mobile/tablet only)
+    $effect(() => {
+        if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
+            errorDialogOpen = true;
+        }
+    });
 
     $effect(() => {
         if ($formData.rooms.length === 0) {

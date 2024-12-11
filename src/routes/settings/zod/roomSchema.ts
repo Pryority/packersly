@@ -1,4 +1,4 @@
-// src/lib/schemas/room.ts
+// src/routes/settings/zod/roomSchema.ts
 import { z } from "zod";
 
 const roomSchema = z.object({

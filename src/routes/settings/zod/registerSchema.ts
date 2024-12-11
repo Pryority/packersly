@@ -1,4 +1,4 @@
-// src/lib/schemas/register.ts
+// src/routes/settings/zod/registerSchema.tss
 import { z } from "zod";
 
 const registerSchema = z

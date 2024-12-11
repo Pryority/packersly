@@ -1,4 +1,4 @@
-// src/lib/schemas/login.ts
+// src/routes/settings/zod/loginSchema.ts
 import { z } from "zod";
 
 const loginSchema = z.object({

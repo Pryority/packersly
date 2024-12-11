@@ -1,3 +1,4 @@
+<!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
     import Ellipsis from "lucide-svelte/icons/ellipsis";
     import { Button } from "@components/ui/button/index.js";
@@ -5,42 +6,53 @@
     import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
     import { page } from "$app/stores";
+    import type { Box } from "@db/schema/box";
 
-    const { data } = $props();
-    console.log(data.rooms);
+    const { data } = $props<{
+        data: {
+            box: Box & {
+                items: Array<{
+                    id: string;
+                    name: string;
+                    quantity: number;
+                }>;
+            };
+        };
+    }>();
+
+    const { box } = data;
 </script>
 
 <Card.Root class="m-4">
     <Card.Header>
-        <Card.Title>Rooms</Card.Title>
+        <Card.Title>Box Details</Card.Title>
         <Card.Description>
-            Manage your rooms and view their boxes.
+            View and manage items in this box.
+            {#if box.qrCode}
+                <div class="mt-2">
+                    QR Code: {box.qrCode}
+                </div>
+            {/if}
         </Card.Description>
     </Card.Header>
     <Card.Content>
         <Table.Root>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>Color</Table.Head>
                     <Table.Head>Name</Table.Head>
+                    <Table.Head>Quantity</Table.Head>
                     <Table.Head>
                         <span class="sr-only">Actions</span>
                     </Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {#each data.rooms as room}
+                {#each box.items as item}
                     <Table.Row>
-                        <Table.Cell class="w-8">
-                            <div class="flex flex-col items-center gap-1">
-                                <div
-                                    class="aspect-square w-8"
-                                    style={`background-color: ${room.colorCode}`}
-                                ></div>
-                                <span class="text-[8px]">{room.colorCode}</span>
-                            </div>
+                        <Table.Cell class="font-medium">
+                            {item.name}
                         </Table.Cell>
-                        <Table.Cell class="font-medium">{room.name}</Table.Cell>
+                        <Table.Cell>{item.quantity}</Table.Cell>
                         <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
@@ -58,14 +70,9 @@
                                     <DropdownMenu.Label
                                         >Actions</DropdownMenu.Label
                                     >
-                                    <DropdownMenu.Item
-                                        ><a
-                                            href={`${$page.url.pathname}/room/${room.handle}`}
-                                            >View</a
-                                        ></DropdownMenu.Item
-                                    >
                                     <DropdownMenu.Item>Edit</DropdownMenu.Item>
-                                    <DropdownMenu.Item>Delete</DropdownMenu.Item
+                                    <DropdownMenu.Item class="text-destructive"
+                                        >Remove</DropdownMenu.Item
                                     >
                                 </DropdownMenu.Content>
                             </DropdownMenu.Root>
@@ -77,7 +84,10 @@
     </Card.Content>
     <Card.Footer>
         <div class="text-muted-foreground text-xs">
-            Showing <strong>1-10</strong> of <strong>32</strong> products
+            Showing <strong>{box.items.length}</strong> item{box.items
+                .length === 1
+                ? ""
+                : "s"}
         </div>
     </Card.Footer>
 </Card.Root>

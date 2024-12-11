@@ -93,6 +93,16 @@
     //     }
     // });
 
+    function openForm() {
+        const url = new URL($page.url);
+        url.searchParams.set("new", "true");
+        goto(url.toString(), { replaceState: true });
+    }
+
+    function closeForm() {
+        goto("/dashboard", { replaceState: true });
+    }
+
     $effect(() => {
         // Close dialog and show success message if project was created
         if ($page.url.searchParams.has("success")) {
@@ -108,16 +118,6 @@
             open = $page.url.searchParams.has("new");
         }
     });
-
-    function openForm() {
-        const url = new URL($page.url);
-        url.searchParams.set("new", "true");
-        goto(url.toString(), { replaceState: true });
-    }
-
-    function closeForm() {
-        goto("/dashboard", { replaceState: true });
-    }
 </script>
 
 <div
@@ -188,9 +188,6 @@
             </Dialog.Content>
         </Dialog.Portal>
     </Dialog.Root>
-    <script lang="ts">
-        import * as Sheet from "$lib/components/ui/sheet";
-    </script>
 
     <Sheet.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
         <Sheet.Content

@@ -1,4 +1,4 @@
-// src/lib/schemas/project.ts
+// src/routes/settings/zod/projectSchema.ts
 import { z } from "zod";
 import roomSchema from "./roomSchema";
 
