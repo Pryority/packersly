@@ -1,6 +1,7 @@
 import { pgTable, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import room from "./room";
+import item from "./item";
 
 const box = pgTable("box", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -20,11 +21,12 @@ const box = pgTable("box", {
     .notNull(),
 });
 
-export const boxRelations = relations(box, ({ one }) => ({
+export const boxRelations = relations(box, ({ one, many }) => ({
   room: one(room, {
     fields: [box.roomId],
     references: [room.id],
   }),
+  items: many(item),
 }));
 
 export type Box = typeof box.$inferSelect;

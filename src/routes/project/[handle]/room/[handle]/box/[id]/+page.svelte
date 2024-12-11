@@ -1,45 +1,46 @@
-<!-- src/routes/project/[handle]/room/[handle]/+page.svelte -->
 <script lang="ts">
     import Ellipsis from "lucide-svelte/icons/ellipsis";
-    import { Badge } from "@components/ui/badge/index.js";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
     import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
-    import QrCode from "lucide-svelte/icons/qr-code";
     import { page } from "$app/stores";
 
     const { data } = $props();
-    const { room, boxes } = data;
+    console.log(data.rooms);
 </script>
 
 <Card.Root class="m-4">
     <Card.Header>
-        <Card.Title>{room.name}</Card.Title>
-        <Card.Description>Manage boxes in this room.</Card.Description>
+        <Card.Title>Rooms</Card.Title>
+        <Card.Description>
+            Manage your rooms and view their boxes.
+        </Card.Description>
     </Card.Header>
     <Card.Content>
         <Table.Root>
             <Table.Header>
                 <Table.Row>
-                    <!-- <Table.Head>ID</Table.Head> -->
-                    <Table.Head>QR Code</Table.Head><Table.Head
-                        >Item Count</Table.Head
-                    >
-                    <!-- <Table.Head>Contents</Table.Head> -->
-                    <!-- <Table.Head>Notes</Table.Head> -->
+                    <Table.Head>Color</Table.Head>
+                    <Table.Head>Name</Table.Head>
                     <Table.Head>
                         <span class="sr-only">Actions</span>
                     </Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {#each boxes as box}
+                {#each data.rooms as room}
                     <Table.Row>
-                        <!-- <Table.Cell>{box.id.slice(0, 8)}</Table.Cell> -->
-                        <Table.Cell>{box.qrCode}</Table.Cell>
-                        <Table.Cell>{box.items.length}</Table.Cell>
-                        <Table.Cell>{box.notes}</Table.Cell>
+                        <Table.Cell class="w-8">
+                            <div class="flex flex-col items-center gap-1">
+                                <div
+                                    class="aspect-square w-8"
+                                    style={`background-color: ${room.colorCode}`}
+                                ></div>
+                                <span class="text-[8px]">{room.colorCode}</span>
+                            </div>
+                        </Table.Cell>
+                        <Table.Cell class="font-medium">{room.name}</Table.Cell>
                         <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
@@ -57,13 +58,12 @@
                                     <DropdownMenu.Label
                                         >Actions</DropdownMenu.Label
                                     >
-                                    <DropdownMenu.Item>
-                                        <a
-                                            href={`${$page.url.pathname}/box/${box.id}`}
-                                        >
-                                            View
-                                        </a>
-                                    </DropdownMenu.Item>
+                                    <DropdownMenu.Item
+                                        ><a
+                                            href={`${$page.url.pathname}/room/${room.handle}`}
+                                            >View</a
+                                        ></DropdownMenu.Item
+                                    >
                                     <DropdownMenu.Item>Edit</DropdownMenu.Item>
                                     <DropdownMenu.Item>Delete</DropdownMenu.Item
                                     >
@@ -77,7 +77,7 @@
     </Card.Content>
     <Card.Footer>
         <div class="text-muted-foreground text-xs">
-            Showing <strong>{boxes.length}</strong> boxes
+            Showing <strong>1-10</strong> of <strong>32</strong> products
         </div>
     </Card.Footer>
 </Card.Root>
