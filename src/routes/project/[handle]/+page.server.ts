@@ -1,4 +1,4 @@
-// src/routes/dashboard/+page.server.ts
+// src/routes/dashboard/[handle]/+page.server.ts
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
