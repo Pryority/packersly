@@ -79,9 +79,23 @@ export function getUserInitials(
 }
 
 export function generateHandle(name: string): string {
-  const handle = name.toLowerCase().replace(/\s+/g, "-"); // Convert spaces to hyphens
-  if (handle.length < 3 || handle.length > 50) {
+  // First normalize the string to decompose accented characters
+  const normalized = name
+    .normalize("NFD")
+    // Remove diacritics (accents)
+    .replace(/[\u0300-\u036f]/g, "")
+    // Convert to lowercase
+    .toLowerCase()
+    // Replace non-alphanumeric characters (except hyphens) with hyphens
+    .replace(/[^a-z0-9-]+/g, "-")
+    // Remove leading and trailing hyphens
+    .replace(/^-+|-+$/g, "")
+    // Replace multiple consecutive hyphens with a single hyphen
+    .replace(/-{2,}/g, "-");
+
+  if (normalized.length < 3 || normalized.length > 50) {
     throw new Error("Handle length must be between 3 and 50 characters");
   }
-  return handle;
+
+  return normalized;
 }
