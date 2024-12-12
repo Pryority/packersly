@@ -17,6 +17,13 @@ const handleAuth: Handle = async ({ event, resolve }) => {
     },
   });
 
+  // Handle protocol forwarding from Railway
+  const protocol = event.request.headers.get("x-forwarded-proto");
+  if (protocol) {
+    // Override the protocol in the URL
+    event.url.protocol = protocol;
+  }
+
   // Handle auth session
   const sessionToken = event.cookies.get(auth.sessionCookieName);
   if (!sessionToken) {
