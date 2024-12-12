@@ -11,6 +11,7 @@ const config = {
     adapter: adapter({
       dynamic_origin: true, // This helps with Railway's proxy setup
       precompress: true, // Enable compression for better performance
+      envPrefix: "",
     }),
     env: {
       dir: ".",
