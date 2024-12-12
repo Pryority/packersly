@@ -3,6 +3,14 @@ import type { Handle } from "@sveltejs/kit";
 import * as auth from "$lib/server/auth.js";
 
 const handleAuth: Handle = async ({ event, resolve }) => {
+  console.log("Incoming Request Details:", {
+    method: event.request.method,
+    url: event.url.href,
+    origin: event.request.headers.get("origin"),
+    referer: event.request.headers.get("referer"),
+    host: event.request.headers.get("host"),
+  });
+
   // Handle auth session
   const sessionToken = event.cookies.get(auth.sessionCookieName);
   if (!sessionToken) {
