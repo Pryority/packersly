@@ -28,6 +28,7 @@ COPY --from=builder /app/bun.lockb .
 COPY --from=builder /app/drizzle.config.ts .
 COPY --from=builder /app/src/lib/server/db/schema ./src/lib/server/db/schema
 COPY --from=builder /app/src/lib/env.ts ./src/lib/env.ts
+COPY --from=builder /app/drizzle ./drizzle
 
 # Install only production dependencies
 RUN bun install --production --frozen-lockfile
@@ -38,4 +39,4 @@ ENV HOST=0.0.0.0
 # Expose the port your app runs on from Environment variables
 EXPOSE ${PORT}
 # Push Drizzle schema and start the app
-CMD bun db-prod:push && bun run start
+CMD bun db:migrate && bun run start
