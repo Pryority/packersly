@@ -16,15 +16,16 @@
     import AlertCircle from "lucide-svelte/icons/alert-circle";
     import { Separator } from "@components/ui/separator";
 
-    const {
+    let {
         form,
         submitting,
-    }: { form: SuperForm<Infer<typeof projectSchema>>; submitting: boolean } =
-        $props();
+        // errorDialogOpen,
+    }: {
+        form: SuperForm<Infer<typeof projectSchema>>;
+        submitting: boolean;
+        // errorDialogOpen: boolean;
+    } = $props();
     const { form: formData, enhance, errors } = form;
-
-    let errorDialogOpen = $state(false);
-    // let wasSubmitted = $state(false);
 
     function addRoom() {
         formData.update(($formData) => ({
@@ -60,11 +61,11 @@
     }
 
     // Show error dialog when there are errors (on mobile/tablet only)
-    $effect(() => {
-        if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
-            errorDialogOpen = true;
-        }
-    });
+    // $effect(() => {
+    //     if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
+    //         errorDialogOpen = true;
+    //     }
+    // });
 
     $effect(() => {
         if ($formData.rooms.length === 0) {
@@ -96,7 +97,7 @@
                         Give your moving project a name
                     </span></Form.Description
                 >
-                <Form.FieldErrors class="hidden md:block" />
+                <Form.FieldErrors class="max-md:text-xs" />
             </Form.Field>
 
             <Form.Field {form} name="fromAddress">
@@ -111,7 +112,7 @@
                 <Form.Description
                     >The address you're moving from</Form.Description
                 >
-                <Form.FieldErrors class="hidden md:block" />
+                <Form.FieldErrors class="max-md:text-xs" />
             </Form.Field>
 
             <Form.Field {form} name="toAddress">
@@ -125,7 +126,7 @@
                 </Form.Control>
                 <Form.Description>The address you're moving to</Form.Description
                 >
-                <Form.FieldErrors class="hidden md:block" />
+                <Form.FieldErrors class="max-md:text-xs" />
             </Form.Field>
 
             <div class="space-y-2">
@@ -148,14 +149,12 @@
                                         placeholder="Room name"
                                         {...attrs}
                                     />
-                                    <Form.FieldErrors class="hidden md:block" />
+                                    <Form.FieldErrors class="max-md:text-xs" />
                                 </div>
                             </Form.Control>
                         </Form.Field>
 
-                        <div
-                            class="flex items-center gap-1 justify-between w-full"
-                        >
+                        <div class="space-y-4">
                             <Form.Field
                                 {form}
                                 name={`rooms.${i}.colorCode` as FormPath<
@@ -163,21 +162,24 @@
                                 >}
                             >
                                 <Form.Control let:attrs>
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex flex-col gap-1">
                                         <Form.Label
-                                            class="text-xs whitespace-nowrap"
-                                            >Room {i + 1} Color</Form.Label
+                                            class="max-md:text-xs whitespace-nowrap"
+                                            >Room Color</Form.Label
                                         >
                                         <Input
                                             type="color"
                                             bind:value={$formData.rooms[i]
                                                 .colorCode}
-                                            class="w-20 h-9 p-0 cursor-pointer"
+                                            class="w-full h-9 p-0 cursor-pointer"
                                             {...attrs}
                                         />
                                         <Form.FieldErrors
-                                            class="hidden md:block"
+                                            class="max-md:text-xs"
                                         />
+                                        <Form.Description>
+                                            Organize your room with a color
+                                        </Form.Description>
                                     </div>
                                 </Form.Control>
                             </Form.Field>
@@ -186,11 +188,14 @@
                                 type="button"
                                 size="sm"
                                 variant="destructive"
-                                class="md:mt-6"
                                 on:click={() => removeRoom(i)}
                                 disabled={$formData.rooms.length === 1}
+                                class="md:col-span-1 w-full md:h-10 md:w-10 max-md:flex self-end mb-2 max-md:gap-2"
                             >
-                                <Trash />
+                                <span class="md:hidden"
+                                    >Delete Item {i + 1}</span
+                                >
+                                <Trash class="h-4 w-4 md:h-8 md:w-8" />
                             </Button>
                         </div>
                     </div>
@@ -210,7 +215,7 @@
     </form>
 </Card.Root>
 
-<Dialog.Root bind:open={errorDialogOpen}>
+<!-- <Dialog.Root bind:open={errorDialogOpen}>
     <Dialog.Portal>
         <Dialog.Overlay class="bg-background/80 backdrop-blur-sm" />
         <Dialog.Content class="sm:max-w-[425px]">
@@ -237,4 +242,4 @@
             </Dialog.Footer>
         </Dialog.Content>
     </Dialog.Portal>
-</Dialog.Root>
+</Dialog.Root> -->

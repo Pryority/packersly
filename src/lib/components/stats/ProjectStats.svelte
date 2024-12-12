@@ -29,6 +29,7 @@
     let dialogOpen = $state(false);
     let sheetOpen = $state(false);
     let submitting = $state(false);
+    // let errorDialogOpen = $state(false);
 
     const form = superForm(data, {
         validators: zodClient(projectSchema),
@@ -45,6 +46,9 @@
             };
         },
         onError: () => {
+            submitting = false;
+        },
+        onResult: () => {
             submitting = false;
         },
     });

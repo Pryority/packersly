@@ -17,33 +17,33 @@
 
     const { form: formData, enhance, errors } = form;
 
-    let errorDialogOpen = $state(false);
+    // let errorDialogOpen = $state(false);
 
     // Function to format field errors for display
-    function getFormattedErrors() {
-        const errList = [];
-        for (const [field, fieldErrors] of Object.entries($errors)) {
-            if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
-                // Handle nested room errors
-                if (field.startsWith("rooms.")) {
-                    const [_, index, subField] = field.split(".");
-                    errList.push(
-                        `Room ${parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
-                    );
-                } else {
-                    errList.push(`${fieldErrors[0]}`);
-                }
-            }
-        }
-        return errList;
-    }
+    // function getFormattedErrors() {
+    //     const errList = [];
+    //     for (const [field, fieldErrors] of Object.entries($errors)) {
+    //         if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+    //             // Handle nested room errors
+    //             if (field.startsWith("rooms.")) {
+    //                 const [_, index, subField] = field.split(".");
+    //                 errList.push(
+    //                     `Room ${parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
+    //                 );
+    //             } else {
+    //                 errList.push(`${fieldErrors[0]}`);
+    //             }
+    //         }
+    //     }
+    //     return errList;
+    // }
 
     // Show error dialog when there are errors (on mobile/tablet only)
-    $effect(() => {
-        if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
-            errorDialogOpen = true;
-        }
-    });
+    // $effect(() => {
+    //     if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
+    //         errorDialogOpen = true;
+    //     }
+    // });
 </script>
 
 <Card.Root>
@@ -66,7 +66,7 @@
                         Give your moving project a name
                     </span></Form.Description
                 >
-                <Form.FieldErrors class="hidden md:block" />
+                <Form.FieldErrors class="max-md:text-xs" />
             </Form.Field>
 
             <Form.Field {form} name="colorCode">
@@ -81,7 +81,7 @@
                             class="w-full h-9 p-0 cursor-pointer"
                             {...attrs}
                         />
-                        <Form.FieldErrors class="hidden md:block" />
+                        <Form.FieldErrors class="max-md:text-xs" />
                         <Form.Description>
                             Organize your room with a color
                         </Form.Description>
@@ -98,7 +98,7 @@
     </form>
 </Card.Root>
 
-<Dialog.Root bind:open={errorDialogOpen}>
+<!-- <Dialog.Root bind:open={errorDialogOpen}>
     <Dialog.Portal>
         <Dialog.Overlay class="bg-background/80 backdrop-blur-sm" />
         <Dialog.Content class="sm:max-w-[425px]">
@@ -125,4 +125,4 @@
             </Dialog.Footer>
         </Dialog.Content>
     </Dialog.Portal>
-</Dialog.Root>
+</Dialog.Root> -->

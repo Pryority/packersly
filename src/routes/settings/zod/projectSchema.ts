@@ -5,7 +5,7 @@ import roomSchema from "./roomSchema";
 const projectSchema = z.object({
   name: z
     .string()
-    .min(2, "Project name must be at least 2 characters")
+    .min(2, "Name must be at least 2 characters")
     .max(50, "Project name must be less than 50 characters"),
   fromAddress: z
     .string()

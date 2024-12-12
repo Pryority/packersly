@@ -50,6 +50,9 @@
         onError: () => {
             submitting = false;
         },
+        onResult: () => {
+            submitting = false;
+        },
     });
 
     function openForm() {
