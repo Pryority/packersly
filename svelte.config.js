@@ -12,10 +12,10 @@ const config = {
       dynamic_origin: true, // This helps with Railway's proxy setup
       precompress: true, // Enable compression for better performance
     }),
-    // env: {
-    //   dir: ".",
-    //   publicPrefix: "PUBLIC_",
-    // },
+    env: {
+      dir: ".",
+      publicPrefix: "PUBLIC_",
+    },
     alias: {
       "@routes": "src/routes",
       "@components": "src/lib/components",

@@ -6,3 +6,7 @@ dockerfilePath = "Dockerfile"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
+
+[env]
+ORIGIN = "https://packersly-production.up.railway.app"
+PUBLIC_ORIGIN = "https://packersly-production.up.railway.app"
