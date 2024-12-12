@@ -37,7 +37,11 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
     with: {
       rooms: {
         with: {
-          boxes: true,
+          boxes: {
+            with: {
+              items: true,
+            },
+          },
         },
       },
     },

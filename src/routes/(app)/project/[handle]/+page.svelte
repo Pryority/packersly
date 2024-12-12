@@ -1,15 +1,11 @@
 <!-- src/routes/project/[handle]/+page.svelte -->
 <script lang="ts">
-    // import ProjectDetails from "@components/projects/ProjectDetails.svelte";
-    // import Ellipsis from "lucide-svelte/icons/ellipsis";
     import * as Dialog from "@components/ui/dialog";
     import * as Sheet from "@components/ui/sheet";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
-    // import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
-    import { page } from "$app/stores";
-    import type { Room } from "@db/schema";
+    import { page, navigating } from "$app/stores";
     import { roomSchema, type RoomSchema } from "@routes/settings/zod";
     import {
         type SuperValidated,
@@ -69,21 +65,30 @@
     }
 
     $effect(() => {
-        // Close dialog and show success message if project was created
+        if ($page.url.searchParams.has("new")) {
+            // Check if we're navigating back from a box page
+            if ($navigating?.from?.url.pathname.includes("/room/")) {
+                console.log("Coming from room page, cleaning up URL");
+                const url = new URL($page.url);
+                url.searchParams.delete("new");
+                goto(url.toString(), { replaceState: true });
+                dialogOpen = false;
+                sheetOpen = false;
+            } else {
+                // Normal dialog open/close handling
+                const isMobile = window.innerWidth < 768;
+                dialogOpen = !isMobile && $page.url.searchParams.has("new");
+                sheetOpen = isMobile && $page.url.searchParams.has("new");
+            }
+        }
+
+        // Handle success case as before
         if ($page.url.searchParams.has("success")) {
             dialogOpen = false;
             sheetOpen = false;
-            // Optionally show a success toast/notification here
-
-            // Clean up the URL
             const url = new URL($page.url);
             url.searchParams.delete("success");
             goto(url.toString(), { replaceState: true });
-        } else {
-            // Normal dialog open/close handling
-            const isMobile = window.innerWidth < 768; // matches your md: breakpoint
-            dialogOpen = !isMobile && $page.url.searchParams.has("new");
-            sheetOpen = isMobile && $page.url.searchParams.has("new");
         }
     });
 </script>

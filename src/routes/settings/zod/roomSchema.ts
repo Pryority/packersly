@@ -8,7 +8,8 @@ const roomSchema = z.object({
     .max(30, "Room name must be less than 30 characters"),
   colorCode: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color code"),
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color code")
+    .default("#000000"),
 });
 
 export type RoomSchema = typeof roomSchema;

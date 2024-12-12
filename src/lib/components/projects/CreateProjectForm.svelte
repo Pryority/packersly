@@ -24,6 +24,7 @@
     const { form: formData, enhance, errors } = form;
 
     let errorDialogOpen = $state(false);
+    // let wasSubmitted = $state(false);
 
     function addRoom() {
         formData.update(($formData) => ({

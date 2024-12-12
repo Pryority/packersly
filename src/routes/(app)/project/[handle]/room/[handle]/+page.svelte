@@ -7,7 +7,7 @@
     import * as Card from "@components/ui/card/index.js";
     import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
-    import { page } from "$app/stores";
+    import { page, navigating } from "$app/stores";
     import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
     import type { BoxSchema } from "@routes/settings/zod/boxSchema.js";
     import {
@@ -31,18 +31,6 @@
         };
     } = $props();
 
-    // console.log("Room data:", data.room);
-    // console.log("Room boxes raw:", data.room.boxes);
-    // console.log("Room boxes length:", data.room.boxes?.length ?? "undefined");
-
-    // console.log("Separate boxes array:", data.rboxes);
-
-    // Then use props.data.room and props.data.boxes in your template
-
-    let dialogOpen = $state(false);
-    let sheetOpen = $state(false);
-    let submitting = $state(false);
-
     const form = superForm(data.form, {
         validators: zodClient(boxSchema),
         dataType: "json",
@@ -54,13 +42,19 @@
                     submitting = false;
                     cancel();
                 }
-                // Don't handle redirect here - let SvelteKit handle it
             };
         },
         onError: () => {
             submitting = false;
         },
+        onResult: () => {
+            submitting = false;
+        },
     });
+
+    let dialogOpen = $state(false);
+    let sheetOpen = $state(false);
+    let submitting = $state(false);
 
     function openForm() {
         const url = new URL($page.url);
@@ -74,26 +68,21 @@
         goto(url.toString(), { replaceState: true });
     }
 
-    // console.log(data.boxes.length > 0);
-    // console.log(data.boxes);
-
     $effect(() => {
-        // Only open dialog/sheet if we're not navigating back from a box page
         if ($page.url.searchParams.has("new")) {
-            // Check if we came from a box page
-            const previousUrl = document.referrer;
-            const isFromBox = previousUrl.includes("/box/");
-
-            if (!isFromBox) {
+            // Check if we're navigating back from a box page
+            if ($navigating?.from?.url.pathname.includes("/box/")) {
+                console.log("Coming from box page, cleaning up URL");
+                const url = new URL($page.url);
+                url.searchParams.delete("new");
+                goto(url.toString(), { replaceState: true });
+                dialogOpen = false;
+                sheetOpen = false;
+            } else {
                 // Normal dialog open/close handling
                 const isMobile = window.innerWidth < 768;
                 dialogOpen = !isMobile && $page.url.searchParams.has("new");
                 sheetOpen = isMobile && $page.url.searchParams.has("new");
-            } else {
-                // We came from a box page, so clean up the URL without opening dialog
-                const url = new URL($page.url);
-                url.searchParams.delete("new");
-                goto(url.toString(), { replaceState: true });
             }
         }
 
@@ -106,6 +95,8 @@
             goto(url.toString(), { replaceState: true });
         }
     });
+
+    console.log("data.room.boxes", data.room.boxes);
 </script>
 
 <Card.Root class="m-4">
@@ -257,7 +248,7 @@
                 </Dialog.Description>
             </Dialog.Header>
             <div>
-                <CreateBoxForm {form} {submitting} />
+                <CreateBoxForm {form} bind:submitting />
             </div>
         </Dialog.Content>
     </Dialog.Portal>
@@ -293,6 +284,6 @@
                 </span>
             </Sheet.Description>
         </Sheet.Header>
-        <CreateBoxForm {form} {submitting} />
+        <CreateBoxForm {form} bind:submitting />
     </Sheet.Content>
 </Sheet.Root>

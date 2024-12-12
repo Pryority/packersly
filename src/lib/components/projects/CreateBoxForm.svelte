@@ -11,18 +11,15 @@
         type Infer,
         type SuperForm,
     } from "sveltekit-superforms";
-    import { zodClient } from "sveltekit-superforms/adapters";
     import Trash from "lucide-svelte/icons/trash";
     import AlertCircle from "lucide-svelte/icons/alert-circle";
     import { Separator } from "@components/ui/separator";
     import boxSchema from "@routes/settings/zod/boxSchema";
     import type { BoxSchema } from "@routes/settings/zod";
-    import type { ActionResult } from "@sveltejs/kit";
-    import type { Room } from "@db/schema";
 
     const {
         form,
-        submitting,
+        submitting = $bindable(),
     }: { form: SuperForm<Infer<BoxSchema>>; submitting: boolean } = $props();
 
     const { form: formData, enhance, errors } = form;
@@ -49,10 +46,10 @@
         for (const [field, fieldErrors] of Object.entries($errors)) {
             if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
                 // Handle nested room errors
-                if (field.startsWith("rooms.")) {
+                if (field.startsWith("items.")) {
                     const [_, index, subField] = field.split(".");
                     errList.push(
-                        `Room ${parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
+                        `Item ${parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
                     );
                 } else {
                     errList.push(`${fieldErrors[0]}`);
@@ -100,7 +97,7 @@
                                 <!-- Item Name -->
                                 <Form.Field
                                     {form}
-                                    name={`rooms.${i}.name` as FormPath<
+                                    name={`items.${i}.name` as FormPath<
                                         Infer<typeof boxSchema>
                                     >}
                                     class="md:col-span-8"
