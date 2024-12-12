@@ -2,7 +2,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
-import env from "$lib/env";
+import env from "../../env";
 import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 
