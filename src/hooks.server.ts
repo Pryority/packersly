@@ -3,28 +3,31 @@ import type { Handle } from "@sveltejs/kit";
 import * as auth from "$lib/server/auth.js";
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-  console.log("Request Details:", {
-    url: event.url.toString(),
-    host: event.url.host,
-    protocol: event.url.protocol,
-    origin: event.url.origin,
-    pathname: event.url.pathname,
-    headers: {
-      origin: event.request.headers.get("origin"),
-      host: event.request.headers.get("host"),
-      "x-forwarded-host": event.request.headers.get("x-forwarded-host"),
-      "x-forwarded-proto": event.request.headers.get("x-forwarded-proto"),
-    },
-  });
+  // Force set the protocol and origin based on Railway's forwarded headers
+  const forwardedProto = event.request.headers.get("x-forwarded-proto");
+  const host = event.request.headers.get("host");
 
-  // Handle protocol forwarding from Railway
-  const protocol = event.request.headers.get("x-forwarded-proto");
-  if (protocol) {
-    // Override the protocol in the URL
-    event.url.protocol = protocol;
+  if (forwardedProto && host) {
+    const expectedOrigin = `${forwardedProto}://${host}`;
+
+    // Create a new request with the correct origin if it's missing
+    if (!event.request.headers.get("origin")) {
+      const newHeaders = new Headers(event.request.headers);
+      newHeaders.set("origin", expectedOrigin);
+
+      event.request = new Request(event.request.url, {
+        method: event.request.method,
+        headers: newHeaders,
+        body: event.request.body,
+        credentials: event.request.credentials,
+      });
+    }
+
+    // Also update the URL protocol
+    event.url.protocol = forwardedProto + ":";
   }
 
-  // Handle auth session
+  // Your existing auth logic
   const sessionToken = event.cookies.get(auth.sessionCookieName);
   if (!sessionToken) {
     console.log("No session token found");
@@ -41,7 +44,6 @@ const handleAuth: Handle = async ({ event, resolve }) => {
     console.log("Invalid session, clearing cookie");
     auth.deleteSessionTokenCookie(event);
   }
-
   event.locals.user = user;
   event.locals.session = session;
 
