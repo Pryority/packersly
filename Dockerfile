@@ -24,10 +24,10 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json .
 COPY --from=builder /app/bun.lockb .
-# Copy drizzle config and schema
-COPY --from=builder /app/drizzle.config.ts .
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/src/lib/server/db/schema ./src/lib/server/db/schema
 COPY --from=builder /app/src/lib/env.ts ./src/lib/env.ts
+COPY --from=builder /app/drizzle.config.ts .
 COPY --from=builder /app/drizzle ./drizzle
 
 # Install only production dependencies
