@@ -1,4 +1,4 @@
-import db, { connection } from "@db";
+import db, { connection } from "./index";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import env from "$lib/env";
 
