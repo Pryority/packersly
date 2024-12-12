@@ -19,6 +19,8 @@
     const form = superForm(data, {
         validators: zodClient(registerSchema),
         taintedMessage: null,
+        applyAction: true,
+        invalidateAll: true,
         onSubmit: ({ cancel }) => {
             submitting = true;
             return async ({ result }: { result: ActionResult }) => {
@@ -40,7 +42,12 @@
     let isAgent = $state(false);
 </script>
 
-<form method="POST" use:enhance>
+<form
+    method="POST"
+    use:enhance
+    action="?/default"
+    enctype="application/x-www-form-urlencoded"
+>
     <div class="space-y-4">
         <Form.Field
             {form}
