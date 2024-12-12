@@ -1,6 +1,6 @@
 import db, { connection } from "./index";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import env from "$lib/env";
+import env from "../../env";
 
 async function runMigrations() {
   console.log("Migration config:", {
