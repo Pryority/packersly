@@ -38,4 +38,4 @@ ENV HOST=0.0.0.0
 # Expose the port your app runs on from Environment variables
 EXPOSE ${PORT}
 # Push Drizzle schema and start the app
-CMD bun db:push && bun run start
+CMD drizzle-kit push --push && bun run start
