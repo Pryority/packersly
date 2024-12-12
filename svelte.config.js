@@ -13,7 +13,9 @@ const config = {
       precompress: true, // Enable compression for better performance
       envPrefix: "",
     }),
-    csrf: true,
+    csrf: {
+      checkOrigin: true,
+    },
     env: {
       dir: ".",
       publicPrefix: "PUBLIC_",
