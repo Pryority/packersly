@@ -12,9 +12,6 @@ const config = {
       dynamic_origin: true, // This helps with Railway's proxy setup
       precompress: true, // Enable compression for better performance
     }),
-    csrf: {
-      protectedOrigins: ["https://packersly-production.up.railway.app"],
-    },
     env: {
       dir: ".",
       publicPrefix: "PUBLIC_",
