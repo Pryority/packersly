@@ -144,37 +144,85 @@ export function getProjectStats(
   };
 }
 
-// Function to download SVG as PNG
-export function downloadQRCode(qrCode: string) {
-  if (!qrCode) return;
+// export function downloadQRCode(qrCode: string, colorCode: string) {
+//   if (!qrCode) return;
+//   console.log("downloading");
 
-  // Create a temporary container for the SVG
-  const container = document.createElement("div");
-  container.innerHTML = qrCode;
-  const svg = container.firstChild as SVGElement;
+//   // Create temporary container for SVG
+//   const container = document.createElement("div");
+//   container.innerHTML = qrCode;
+//   const svg = container.querySelector("svg");
+//   if (!svg) return;
 
-  // Set dimensions
-  const width = 1024;
-  const height = 1024;
+//   // Get original SVG viewBox
+//   const originalViewBox = svg
+//     .getAttribute("viewBox")
+//     ?.split(" ")
+//     .map(Number) || [0, 0, 100, 100];
+//   const [x, y, width, height] = originalViewBox;
 
-  // Create canvas
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
+//   // Add some padding and space for the color bar
+//   const padding = width * 0.1; // 10% padding
+//   const barHeight = height * 0.2; // 20% of QR height for color bar
+//   const gap = height * 0.05; // 5% gap between QR and bar
 
-  // Create image from SVG
-  const image = new Image();
-  image.src = "data:image/svg+xml;base64," + btoa(qrCode);
+//   // Create new SVG with modified viewBox to accommodate the bar
+//   const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+//   newSvg.setAttribute(
+//     "viewBox",
+//     `${x} ${y} ${width} ${height + gap + barHeight}`,
+//   );
 
-  image.onload = () => {
-    if (!ctx) return;
-    ctx.drawImage(image, 0, 0, width, height);
+//   // Create a white background
+//   const background = document.createElementNS(
+//     "http://www.w3.org/2000/svg",
+//     "rect",
+//   );
+//   background.setAttribute("x", String(x));
+//   background.setAttribute("y", String(y));
+//   background.setAttribute("width", String(width));
+//   background.setAttribute("height", String(height + gap + barHeight));
+//   background.setAttribute("fill", "white");
 
-    // Convert to PNG and download
-    const link = document.createElement("a");
-    link.download = `box-qr-code.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  };
-}
+//   // Create the color bar
+//   const colorBar = document.createElementNS(
+//     "http://www.w3.org/2000/svg",
+//     "rect",
+//   );
+//   colorBar.setAttribute("x", String(x + padding));
+//   colorBar.setAttribute("y", String(height + gap));
+//   colorBar.setAttribute("width", String(width - padding * 2));
+//   colorBar.setAttribute("height", String(barHeight));
+//   colorBar.setAttribute("fill", colorCode);
+//   colorBar.setAttribute("rx", String(barHeight * 0.1)); // Rounded corners
+
+//   // Add all elements to new SVG
+//   newSvg.appendChild(background);
+//   newSvg.innerHTML += svg.innerHTML; // Add original QR code
+//   newSvg.appendChild(colorBar);
+
+//   // Set dimensions
+//   const pngWidth = 1024;
+//   const pngHeight = (1024 * (height + gap + barHeight)) / width;
+
+//   // Create canvas
+//   const canvas = document.createElement("canvas");
+//   canvas.width = pngWidth;
+//   canvas.height = pngHeight;
+//   const ctx = canvas.getContext("2d");
+
+//   // Create image from SVG
+//   const image = new Image();
+//   image.src = "data:image/svg+xml;base64," + btoa(newSvg.outerHTML);
+
+//   image.onload = () => {
+//     if (!ctx) return;
+//     ctx.drawImage(image, 0, 0, pngWidth, pngHeight);
+
+//     // Convert to PNG and download
+//     const link = document.createElement("a");
+//     link.download = `box-qr-code.png`;
+//     link.href = canvas.toDataURL("image/png");
+//     link.click();
+//   };
+// }

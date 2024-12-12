@@ -7,3 +7,7 @@ export {
 } from "./registerSchema";
 export { default as loginSchema } from "./loginSchema";
 export { default as boxSchema, type BoxSchema } from "./boxSchema";
+export {
+  default as downloadQrSchema,
+  type DownloadQrSchema,
+} from "./downloadQrSchema";

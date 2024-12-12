@@ -1,13 +1,25 @@
 <!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
+    import { enhance } from "$app/forms";
     import Ellipsis from "lucide-svelte/icons/ellipsis";
     import Download from "lucide-svelte/icons/download";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
     import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
+    import * as Form from "@components/ui/form";
     import type { Box } from "@db/schema/box";
-    import { downloadQRCode } from "@utils";
+    import {
+        downloadQrSchema,
+        type DownloadQrSchema,
+    } from "@routes/settings/zod";
+    import {
+        type SuperValidated,
+        type Infer,
+        superForm,
+    } from "sveltekit-superforms";
+    import { zodClient } from "sveltekit-superforms/adapters";
+    import type { ActionResult } from "@sveltejs/kit";
 
     const { data } = $props<{
         data: {
@@ -18,42 +30,174 @@
                     quantity: number;
                 }>;
             };
+            form: SuperValidated<Infer<DownloadQrSchema>>;
         };
     }>();
-
     const { box } = data;
+    const form = superForm(data.form, {
+        validators: zodClient(downloadQrSchema),
+        dataType: "json",
+        taintedMessage: null,
+        onSubmit: ({ cancel }) => {
+            submitting = true;
+            return async ({ result }: { result: ActionResult }) => {
+                if (result.type === "success") {
+                    try {
+                        const response = await fetch("/api/download-qr", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                qrCode: $formData.qrCode,
+                                colorCode: $formData.colorCode,
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error("Download failed");
+                        }
+
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "box-qr-code.svg";
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                    } catch (error) {
+                        console.error("Download error:", error);
+                    } finally {
+                        submitting = false;
+                        cancel();
+                    }
+                } else {
+                    submitting = false;
+                    cancel();
+                }
+            };
+        },
+        onError: () => {
+            submitting = false;
+        },
+    });
+
+    const { form: formData, errors } = form;
+    let submitting = $state(false);
+
+    $effect(() => {
+        if (box.qrCode && (!$formData.qrCode || !$formData.colorCode)) {
+            formData.update(($formData) => ({
+                ...$formData,
+                qrCode: box.qrCode,
+                colorCode: data.box.room.colorCode,
+            }));
+        }
+    });
 </script>
 
 <Card.Root class="m-4">
     <Card.Header>
         <Card.Title>Box Details</Card.Title>
-        <Card.Description>
-            View and manage items in this box.
-            {#if box.qrCode}
-                <div class="mt-4 flex flex-col items-center gap-2">
-                    <div class="w-64 h-64">
-                        {@html box.qrCode.replace(
-                            "<svg",
-                            '<svg class="h-full w-full"',
-                        )}
-                    </div>
-                    <div class="flex flex-col items-center gap-2">
-                        <div class="text-sm text-muted-foreground">
-                            Scan to view box contents
-                        </div>
+        <Card.Description>View and manage items in this box.</Card.Description>
+        {#if box.qrCode}
+            <span class="mt-4 flex flex-col items-center gap-2">
+                <span class="w-64 h-64">
+                    {@html box.qrCode.replace(
+                        "<svg",
+                        '<svg class="h-full w-full"',
+                    )}
+                </span>
+                <span class="flex flex-col items-center gap-2">
+                    <span class="text-sm text-muted-foreground">
+                        Scan to view box contents
+                    </span>
+                    <form
+                        method="POST"
+                        action="?/download"
+                        use:enhance={({ cancel }) => {
+                            submitting = true;
+                            return async () => {
+                                try {
+                                    const response = await fetch(
+                                        "/api/download-qr",
+                                        {
+                                            method: "POST",
+                                            headers: {
+                                                "Content-Type":
+                                                    "application/json",
+                                            },
+                                            body: JSON.stringify({
+                                                qrCode: $formData.qrCode,
+                                                colorCode: $formData.colorCode,
+                                            }),
+                                        },
+                                    );
+
+                                    if (!response.ok)
+                                        throw new Error("Download failed");
+
+                                    const blob = await response.blob();
+                                    const url =
+                                        window.URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = "box-qr-code.svg";
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    a.remove();
+                                } catch (error) {
+                                    console.error("Download error:", error);
+                                } finally {
+                                    submitting = false;
+                                    cancel();
+                                }
+                            };
+                        }}
+                    >
+                        <Form.Field {form} name="qrCode">
+                            <Form.Control let:attrs>
+                                <input
+                                    type="hidden"
+                                    bind:value={$formData.qrCode}
+                                    {...attrs}
+                                />
+                            </Form.Control>
+                        </Form.Field>
+
+                        <Form.Field {form} name="colorCode">
+                            <Form.Control let:attrs>
+                                <input
+                                    type="hidden"
+                                    bind:value={$formData.colorCode}
+                                    {...attrs}
+                                />
+                            </Form.Control>
+                        </Form.Field>
+
                         <Button
+                            type="submit"
                             variant="outline"
                             size="sm"
-                            on:click={() => downloadQRCode(box.qrCode)}
                             class="flex items-center gap-2"
                         >
                             <Download class="h-4 w-4" />
-                            Download QR Code
+                            {submitting ? "Downloading..." : "Download QR Code"}
                         </Button>
-                    </div>
-                </div>
-            {/if}
-        </Card.Description>
+                    </form>
+
+                    <!-- Show any form errors -->
+                    {#if $errors.qrCode || $errors.colorCode}
+                        <span class="text-destructive text-sm">
+                            {$errors.qrCode?.[0] || $errors.colorCode?.[0]}
+                        </span>
+                    {/if}
+                </span>
+            </span>
+        {/if}
     </Card.Header>
     <Card.Content>
         <Table.Root>

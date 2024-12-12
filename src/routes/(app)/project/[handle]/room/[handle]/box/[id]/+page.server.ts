@@ -1,9 +1,12 @@
 // src/routes/project/[handle]/room/[handle]/box/[id]/+page.server.ts
-import { error, redirect } from "@sveltejs/kit";
+import { error, redirect, fail, type Actions } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
 import { box } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { downloadQrSchema } from "@routes/settings/zod";
+import { zod } from "sveltekit-superforms/adapters";
+import { superValidate } from "sveltekit-superforms";
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
   if (!locals.user) {
@@ -57,5 +60,15 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
           ? BOX.accessToken
           : undefined,
     },
+    form: await superValidate(zod(downloadQrSchema)),
   };
 };
+export const actions = {
+  download: async ({ request }) => {
+    const form = await superValidate(request, zod(downloadQrSchema));
+    if (!form.valid) {
+      return fail(400, { form });
+    }
+    return { success: true };
+  },
+} satisfies Actions;

@@ -6,7 +6,6 @@
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
     import AlertCircle from "lucide-svelte/icons/alert-circle";
-    import { Separator } from "@components/ui/separator";
 
     import { type Infer, type SuperForm } from "sveltekit-superforms";
     import type { RoomSchema } from "@routes/settings/zod/roomSchema";

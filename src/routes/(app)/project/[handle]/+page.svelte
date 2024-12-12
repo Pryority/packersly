@@ -9,7 +9,6 @@
     // import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
     import { page } from "$app/stores";
-    import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
     import type { Room } from "@db/schema";
     import { roomSchema, type RoomSchema } from "@routes/settings/zod";
     import {
