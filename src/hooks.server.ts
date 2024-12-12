@@ -3,12 +3,18 @@ import type { Handle } from "@sveltejs/kit";
 import * as auth from "$lib/server/auth.js";
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-  console.log("Incoming Request Details:", {
-    method: event.request.method,
-    url: event.url.href,
-    origin: event.request.headers.get("origin"),
-    referer: event.request.headers.get("referer"),
-    host: event.request.headers.get("host"),
+  console.log("Request Details:", {
+    url: event.url.toString(),
+    host: event.url.host,
+    protocol: event.url.protocol,
+    origin: event.url.origin,
+    pathname: event.url.pathname,
+    headers: {
+      origin: event.request.headers.get("origin"),
+      host: event.request.headers.get("host"),
+      "x-forwarded-host": event.request.headers.get("x-forwarded-host"),
+      "x-forwarded-proto": event.request.headers.get("x-forwarded-proto"),
+    },
   });
 
   // Handle auth session
