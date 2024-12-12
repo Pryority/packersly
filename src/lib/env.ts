@@ -1,6 +1,5 @@
 import { config } from "dotenv";
 import { expand } from "dotenv-expand";
-
 import { ZodError, z } from "zod";
 
 const stringBoolean = z.coerce
@@ -10,18 +9,39 @@ const stringBoolean = z.coerce
   })
   .default("false");
 
-const EnvSchema = z.object({
-  NODE_ENV: z.string().default("development"),
-  BASE_URL: z.string().default("http://localhost:5173"),
-  DB_HOST: z.string(),
-  DB_USER: z.string(),
-  DB_PASSWORD: z.string(),
-  DB_NAME: z.string(),
-  DB_PORT: z.coerce.number(),
-  DATABASE_URL: z.string(),
-  DB_MIGRATING: stringBoolean,
-  DB_SEEDING: stringBoolean,
-});
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.string().default("development"),
+    BASE_URL: z.string().default("http://localhost:5173"),
+    // Make database fields optional if DATABASE_URL is provided
+    DB_HOST: z.string().optional(),
+    DB_USER: z.string().optional(),
+    DB_PASSWORD: z.string().optional(),
+    DB_NAME: z.string().optional(),
+    DB_PORT: z.coerce.number().default(5432),
+    // DATABASE_URL is the main connection string we'll use
+    DATABASE_URL: z.string(),
+    DB_MIGRATING: stringBoolean,
+    DB_SEEDING: stringBoolean,
+  })
+  .refine(
+    (data) => {
+      // If DATABASE_URL is provided, we don't need individual DB fields
+      if (data.DATABASE_URL) return true;
+
+      // Otherwise, check if all individual fields are present
+      return !!(
+        data.DB_HOST &&
+        data.DB_USER &&
+        data.DB_PASSWORD &&
+        data.DB_NAME
+      );
+    },
+    {
+      message:
+        "Either DATABASE_URL or all individual DB fields must be provided",
+    },
+  );
 
 export type EnvSchema = z.infer<typeof EnvSchema>;
 
