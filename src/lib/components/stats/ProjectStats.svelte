@@ -57,34 +57,39 @@
     let draftStats = $derived(getProjectStats(projects, "draft"));
     let completedStats = $derived(getProjectStats(projects, "completed"));
 
+    // function openForm() {
+    //     const url = new URL($page.url);
+    //     url.searchParams.set("new", "true");
+    //     goto(url.toString(), { replaceState: true });
+    // }
+    //
+
     function openForm() {
-        const url = new URL($page.url);
-        url.searchParams.set("new", "true");
-        goto(url.toString(), { replaceState: true });
+        dialogOpen = true;
     }
 
-    function closeForm() {
-        goto("/dashboard", { replaceState: true });
-    }
+    // function closeForm() {
+    //     goto("/dashboard", { replaceState: true });
+    // }
 
-    $effect(() => {
-        // Close dialog and show success message if project was created
-        if ($page.url.searchParams.has("success")) {
-            dialogOpen = false;
-            sheetOpen = false;
-            // Optionally show a success toast/notification here
+    // $effect(() => {
+    //     // Close dialog and show success message if project was created
+    //     if ($page.url.searchParams.has("success")) {
+    //         dialogOpen = false;
+    //         sheetOpen = false;
+    //         // Optionally show a success toast/notification here
 
-            // Clean up the URL
-            const url = new URL($page.url);
-            url.searchParams.delete("success");
-            goto(url.toString(), { replaceState: true });
-        } else {
-            // Normal dialog open/close handling
-            const isMobile = window.innerWidth < 768; // matches your md: breakpoint
-            dialogOpen = !isMobile && $page.url.searchParams.has("new");
-            sheetOpen = isMobile && $page.url.searchParams.has("new");
-        }
-    });
+    //         // Clean up the URL
+    //         const url = new URL($page.url);
+    //         url.searchParams.delete("success");
+    //         goto(url.toString(), { replaceState: true });
+    //     } else {
+    //         // Normal dialog open/close handling
+    //         const isMobile = window.innerWidth < 768; // matches your md: breakpoint
+    //         dialogOpen = !isMobile && $page.url.searchParams.has("new");
+    //         sheetOpen = isMobile && $page.url.searchParams.has("new");
+    //     }
+    // });
 </script>
 
 <div
@@ -164,10 +169,7 @@
         </Card.Footer>
     </Card.Root> -->
 
-    <Dialog.Root
-        bind:open={dialogOpen}
-        onOpenChange={(isOpen) => !isOpen && closeForm()}
-    >
+    <Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
         <Dialog.Portal class="hidden md:block">
             <Dialog.Overlay
                 class="bg-background/80 backdrop-blur-sm animate-in fade-in"
@@ -189,10 +191,7 @@
         </Dialog.Portal>
     </Dialog.Root>
 
-    <Sheet.Root
-        bind:open={sheetOpen}
-        onOpenChange={(isOpen) => !isOpen && closeForm()}
-    >
+    <Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
         <Sheet.Content
             side="bottom"
             class="md:hidden  max-h-[90vh]  overflow-y-auto"

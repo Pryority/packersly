@@ -5,7 +5,7 @@
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
     import * as Table from "@components/ui/table/index.js";
-    import { page, navigating } from "$app/stores";
+    import { page } from "$app/stores";
     import { roomSchema, type RoomSchema } from "@routes/settings/zod";
     import {
         type SuperValidated,
@@ -14,8 +14,8 @@
     } from "sveltekit-superforms";
     import { zodClient } from "sveltekit-superforms/adapters";
     import { goto } from "$app/navigation";
-    import type { ProjectData, RoomWithRelations } from "@types";
-    import { getTotalBoxes } from "@utils";
+    import type { ProjectData } from "@types";
+    import { cn, getTotalBoxes, getTotalItemsOfBoxes } from "@utils";
     import CreateRoomForm from "@components/projects/CreateRoomForm.svelte";
     import type { ActionResult } from "@sveltejs/kit";
 
@@ -24,7 +24,6 @@
     }: {
         data: {
             project: ProjectData;
-            rooms: RoomWithRelations;
             form: SuperValidated<Infer<RoomSchema>>;
         };
     } = $props();
@@ -56,89 +55,87 @@
     });
 
     function openForm() {
-        const url = new URL($page.url);
-        url.searchParams.set("new", "true");
-        goto(url.toString(), { replaceState: true });
+        const isMobile = window.innerWidth < 768;
+        dialogOpen = !isMobile;
+        sheetOpen = isMobile;
     }
-
-    function closeForm() {
-        const url = new URL($page.url);
-        url.searchParams.delete("new");
-        goto(url.toString(), { replaceState: true });
-    }
-
-    $effect(() => {
-        if ($page.url.searchParams.has("new")) {
-            // Check if we're navigating back from a box page
-            if ($navigating?.from?.url.pathname.includes("/room/")) {
-                console.log("Coming from room page, cleaning up URL");
-                const url = new URL($page.url);
-                url.searchParams.delete("new");
-                goto(url.toString(), { replaceState: true });
-                dialogOpen = false;
-                sheetOpen = false;
-            } else {
-                // Normal dialog open/close handling
-                const isMobile = window.innerWidth < 768;
-                dialogOpen = !isMobile && $page.url.searchParams.has("new");
-                sheetOpen = isMobile && $page.url.searchParams.has("new");
-            }
-        }
-
-        // Handle success case as before
-        if ($page.url.searchParams.has("success")) {
-            dialogOpen = false;
-            sheetOpen = false;
-            const url = new URL($page.url);
-            url.searchParams.delete("success");
-            goto(url.toString(), { replaceState: true });
-        }
-    });
 </script>
 
-<!-- <ProjectDetails project={data.project} /> -->
-
 <Card.Root class="m-4">
-    <Card.Header>
+    <Card.Header
+        class={cn(
+            data.project.rooms && data.project.rooms.length === 0 ? "pb-4" : "",
+        )}
+    >
         <Card.Title>{data.project.name}</Card.Title>
         <Card.Description>
-            Manage boxes in this room.<br />Click on a row in the table to view
-            the room.
+            Manage boxes in this room.
+            {#if data.project.rooms.length > 0}
+                <br />Click on a row in the table to view the room.
+            {/if}
         </Card.Description>
     </Card.Header>
-    <Card.Content>
-        <Table.Root>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Name</Table.Head>
-                    <Table.Head class="max-md:text-center">Boxes</Table.Head>
-                    <Table.Head class="max-md:text-center">Items</Table.Head>
-                    <!-- <Table.Head>Contents</Table.Head> -->
-                    <!-- <Table.Head>Notes</Table.Head> -->
-                    <!-- <Table.Head>
+    {#if data.project.rooms.length && data.project.rooms.length > 0}
+        <Card.Content>
+            <Table.Root>
+                <Table.Header>
+                    <Table.Row>
+                        <Table.Head class="w-16">Colour</Table.Head>
+                        <Table.Head>Room Name</Table.Head>
+                        <Table.Head class="max-md:text-center">Boxes</Table.Head
+                        >
+                        <Table.Head class="max-md:text-center">Items</Table.Head
+                        >
+                        <!-- <Table.Head>
                         <span class="sr-only">Actions</span>
                     </Table.Head> -->
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {#each data.project.rooms as room}
-                    <Table.Row
-                        on:click={() =>
-                            goto(`${$page.url.pathname}/room/${room.handle}`)}
-                    >
-                        <Table.Cell>{room.name}</Table.Cell>
+                    </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                    {#each data.project.rooms as room}
+                        <Table.Row
+                            on:click={() =>
+                                goto(
+                                    `${$page.url.pathname}/room/${room.handle}`,
+                                )}
+                        >
+                            <Table.Cell class="w-fit bg-red-500x">
+                                <div class="flex flex-col items-center gap-1">
+                                    <div
+                                        class="w-12 aspect-square rounded-sm"
+                                        style={`background-color: ${room.colorCode};`}
+                                    ></div>
+                                    <span class="text-[8px]">
+                                        {room.colorCode}</span
+                                    >
+                                </div>
+                            </Table.Cell>
+                            <Table.Cell
+                                class="md:text-lg md:max-w-24 md:truncate"
+                                >{room.name}</Table.Cell
+                            >
 
-                        <Table.Cell>
-                            <span class="text-center md:text-start">
-                                {#if room.boxes}
-                                    {room.boxes.length}
-                                {:else}
-                                    0
-                                {/if}
-                            </span>
-                        </Table.Cell>
+                            <Table.Cell>
+                                <span
+                                    class="text-center md:text-start md:text-lg"
+                                >
+                                    {#if room.boxes}
+                                        {room.boxes.length}
+                                    {:else}
+                                        0
+                                    {/if}
+                                </span>
+                            </Table.Cell>
 
-                        <!-- <Table.Cell>
+                            <Table.Cell>
+                                <span
+                                    class="text-center md:text-start md:text-lg"
+                                >
+                                    {getTotalItemsOfBoxes(room.boxes)}
+                                </span>
+                            </Table.Cell>
+
+                            <!-- <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
                                     <Button
@@ -168,18 +165,19 @@
                                 </DropdownMenu.Content>
                             </DropdownMenu.Root>
                         </Table.Cell> -->
-                    </Table.Row>
-                {/each}
-            </Table.Body>
-        </Table.Root>
-    </Card.Content>
-    <Card.Footer>
-        <div class="text-muted-foreground text-xs">
-            Showing <strong>
-                {getTotalBoxes(data.project)}
-            </strong> boxes
-        </div>
-    </Card.Footer>
+                        </Table.Row>
+                    {/each}
+                </Table.Body>
+            </Table.Root>
+        </Card.Content>
+        <Card.Footer>
+            <div class="text-muted-foreground text-xs">
+                Showing <strong>
+                    {getTotalBoxes(data.project)}
+                </strong> boxes
+            </div>
+        </Card.Footer>
+    {/if}
 </Card.Root>
 
 <Button
@@ -190,10 +188,7 @@
     Create a Room
 </Button>
 
-<Dialog.Root
-    bind:open={dialogOpen}
-    onOpenChange={(isOpen) => !isOpen && closeForm()}
->
+<Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
     <Dialog.Portal class="hidden md:block">
         <Dialog.Overlay
             class="bg-background/80 backdrop-blur-sm animate-in fade-in"
@@ -213,10 +208,7 @@
     </Dialog.Portal>
 </Dialog.Root>
 
-<Sheet.Root
-    bind:open={sheetOpen}
-    onOpenChange={(isOpen) => !isOpen && closeForm()}
->
+<Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
     <Sheet.Content
         side="bottom"
         class="md:hidden max-h-[90vh]  overflow-y-auto"

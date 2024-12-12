@@ -2,7 +2,8 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { cubicOut } from "svelte/easing";
 import type { TransitionConfig } from "svelte/transition";
-import type { ProjectData } from "@types";
+import type { BoxWithOptionalItems, ProjectData } from "@types";
+import type { Box } from "@db/schema";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -124,6 +125,21 @@ export function getTotalItems(project: ProjectData): number {
         );
       }, 0)
     );
+  }, 0);
+}
+
+export function getTotalItemsOfBoxes(boxes: BoxWithOptionalItems[]): number {
+  if (!boxes || boxes.length === 0) return 0;
+
+  return boxes.reduce((boxTotal, box) => {
+    const itemsTotal = box.items
+      ? box.items.reduce(
+          (itemTotal, item) => itemTotal + (item.quantity || 1),
+          0,
+        )
+      : 0;
+
+    return boxTotal + itemsTotal;
   }, 0);
 }
 

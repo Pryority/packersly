@@ -1,13 +1,11 @@
 <!-- src/routes/project/[handle]/room/[handle]/+page.svelte -->
 <script lang="ts">
-    import Ellipsis from "lucide-svelte/icons/ellipsis";
     import * as Dialog from "@components/ui/dialog";
     import * as Sheet from "@components/ui/sheet";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
-    import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
     import * as Table from "@components/ui/table/index.js";
-    import { page, navigating } from "$app/stores";
+    import { page } from "$app/stores";
     import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
     import type { BoxSchema } from "@routes/settings/zod/boxSchema.js";
     import {
@@ -26,7 +24,6 @@
     }: {
         data: {
             room: any;
-            // boxes: BoxWithOptionalItems[];
             form: SuperValidated<Infer<BoxSchema>>;
         };
     } = $props();
@@ -57,46 +54,10 @@
     let submitting = $state(false);
 
     function openForm() {
-        const url = new URL($page.url);
-        url.searchParams.set("new", "true");
-        goto(url.toString(), { replaceState: true });
+        const isMobile = window.innerWidth < 768;
+        dialogOpen = !isMobile;
+        sheetOpen = isMobile;
     }
-
-    function closeForm() {
-        const url = new URL($page.url);
-        url.searchParams.delete("new");
-        goto(url.toString(), { replaceState: true });
-    }
-
-    $effect(() => {
-        if ($page.url.searchParams.has("new")) {
-            // Check if we're navigating back from a box page
-            if ($navigating?.from?.url.pathname.includes("/box/")) {
-                console.log("Coming from box page, cleaning up URL");
-                const url = new URL($page.url);
-                url.searchParams.delete("new");
-                goto(url.toString(), { replaceState: true });
-                dialogOpen = false;
-                sheetOpen = false;
-            } else {
-                // Normal dialog open/close handling
-                const isMobile = window.innerWidth < 768;
-                dialogOpen = !isMobile && $page.url.searchParams.has("new");
-                sheetOpen = isMobile && $page.url.searchParams.has("new");
-            }
-        }
-
-        // Handle success case as before
-        if ($page.url.searchParams.has("success")) {
-            dialogOpen = false;
-            sheetOpen = false;
-            const url = new URL($page.url);
-            url.searchParams.delete("success");
-            goto(url.toString(), { replaceState: true });
-        }
-    });
-
-    console.log("data.room.boxes", data.room.boxes);
 </script>
 
 <Card.Root class="m-4">
@@ -215,10 +176,7 @@
     Create a Box
 </Button>
 
-<Dialog.Root
-    bind:open={dialogOpen}
-    onOpenChange={(isOpen) => !isOpen && closeForm()}
->
+<Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
     <Dialog.Portal class="hidden md:block">
         <Dialog.Overlay
             class="bg-background/80 backdrop-blur-sm animate-in fade-in"
@@ -254,10 +212,7 @@
     </Dialog.Portal>
 </Dialog.Root>
 
-<Sheet.Root
-    bind:open={sheetOpen}
-    onOpenChange={(isOpen) => !isOpen && closeForm()}
->
+<Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
     <Sheet.Content side="bottom" class="md:hidden max-h-[90vh] overflow-y-auto">
         <Sheet.Header class="mb-4">
             <Sheet.Title>Create New Box</Sheet.Title>

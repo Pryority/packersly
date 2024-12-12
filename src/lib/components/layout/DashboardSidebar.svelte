@@ -51,7 +51,7 @@
     </nav>
 
     <nav class="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-        <Tooltip.Root>
+        <!-- <Tooltip.Root>
             <Tooltip.Trigger asChild let:builder>
                 <a
                     href="/settings"
@@ -65,5 +65,6 @@
             </Tooltip.Trigger>
             <Tooltip.Content side="right">Settings</Tooltip.Content>
         </Tooltip.Root>
+         -->
     </nav>
 </aside>

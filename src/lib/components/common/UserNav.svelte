@@ -53,8 +53,8 @@
     <DropdownMenu.Content align="end">
         <DropdownMenu.Label>My Account</DropdownMenu.Label>
         <DropdownMenu.Separator />
-        <DropdownMenu.Item>Profile</DropdownMenu.Item>
-        <DropdownMenu.Item>Settings</DropdownMenu.Item>
+        <DropdownMenu.Item disabled>Profile</DropdownMenu.Item>
+        <!-- <DropdownMenu.Item>Settings</DropdownMenu.Item> -->
         <DropdownMenu.Separator />
         <form method="POST" action="/logout">
             <DropdownMenu.Item
