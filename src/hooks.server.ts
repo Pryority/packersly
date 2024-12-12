@@ -3,30 +3,11 @@ import type { Handle } from "@sveltejs/kit";
 import * as auth from "$lib/server/auth.js";
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-  // Force set the protocol and origin based on Railway's forwarded headers
-  const forwardedProto = event.request.headers.get("x-forwarded-proto");
-  const host = event.request.headers.get("host");
-
-  if (forwardedProto && host) {
-    const expectedOrigin = `${forwardedProto}://${host}`;
-
-    // Create a new request with the correct origin if it's missing
-    if (!event.request.headers.get("origin")) {
-      const newHeaders = new Headers(event.request.headers);
-      newHeaders.set("origin", expectedOrigin);
-
-      event.request = new Request(event.request.url, {
-        method: event.request.method,
-        headers: newHeaders,
-        body: event.request.body,
-        credentials: event.request.credentials,
-      });
-    }
-
-    // Also update the URL protocol
-    event.url.protocol = forwardedProto + ":";
+  // Get the actual host from forwarded headers
+  const forwardedHost = event.request.headers.get("x-forwarded-host");
+  if (forwardedHost) {
+    event.url.host = forwardedHost;
   }
-
   // Your existing auth logic
   const sessionToken = event.cookies.get(auth.sessionCookieName);
   if (!sessionToken) {
