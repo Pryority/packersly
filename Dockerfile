@@ -36,6 +36,7 @@ RUN bun install --production --frozen-lockfile
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
+ENV ORIGIN="https://packersly-production.up.railway.app"
 # Expose the port your app runs on from Environment variables
 EXPOSE ${PORT}
 # Push Drizzle schema and start the app
