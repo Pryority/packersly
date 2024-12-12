@@ -1,3 +1,4 @@
+<!-- src/routes/(auth)/register/+page.svelte -->
 <script lang="ts">
     import { RegisterForm } from "@components/auth";
     import { AuthLayout } from "@components/layout";
