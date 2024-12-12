@@ -9,11 +9,10 @@ const config = {
 
   kit: {
     adapter: adapter({
-      dynamic_origin: true, // This will use PROTOCOL_HEADER and HOST_HEADER
-      xff_depth: 1,
-      envPrefix: "", // Keep your empty prefix
+      dynamic_origin: true,
       precompress: true,
       out: "build",
+      envPrefix: "",
     }),
     env: {
       dir: ".",
