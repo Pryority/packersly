@@ -40,4 +40,4 @@ ENV ORIGIN="https://packersly-production.up.railway.app"
 # Expose the port your app runs on from Environment variables
 EXPOSE ${PORT}
 # Push Drizzle schema and start the app
-CMD bun db:migrate && bun run start
+CMD ORIGIN="https://packersly-production.up.railway.app" bun db:migrate && bun run start
