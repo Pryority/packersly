@@ -11,6 +11,13 @@ RUN bun install --frozen-lockfile
 # Copy all other files
 COPY . .
 
+ENV DB_HOST=dummy
+ENV DB_USER=dummy
+ENV DB_PASSWORD=dummy
+ENV DB_NAME=dummy
+ENV DB_PORT=5432
+ENV DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy
+
 # Build the SvelteKit application
 RUN bun run build
 
