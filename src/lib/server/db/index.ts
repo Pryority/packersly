@@ -3,6 +3,11 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import env from "$lib/env";
+import { config } from "dotenv";
+import { expand } from "dotenv-expand";
+
+const myEnv = config({ path: ".env" }); // explicitly specify path
+expand(myEnv);
 
 const connectionConfig = {
   max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 10,
