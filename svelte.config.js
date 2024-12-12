@@ -9,20 +9,11 @@ const config = {
 
   kit: {
     adapter: adapter({
-      // Existing options
-      dynamic_origin: true,
-      precompress: true,
-      envPrefix: "",
-
-      // Add these proxy-related options
-      protocol_header: "x-forwarded-proto",
-      host_header: "x-forwarded-host",
-      address_header: "x-forwarded-for",
+      dynamic_origin: true, // This will use PROTOCOL_HEADER and HOST_HEADER
       xff_depth: 1,
-
-      // Ensure proper host/port binding for Railway
-      host: "0.0.0.0", // Allow connections from all network interfaces
-      port: process.env.PORT || 3000,
+      envPrefix: "", // Keep your empty prefix
+      precompress: true,
+      out: "build",
     }),
     env: {
       dir: ".",

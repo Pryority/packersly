@@ -3,11 +3,18 @@ import type { Handle } from "@sveltejs/kit";
 import * as auth from "$lib/server/auth.js";
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-  // Get the actual host from forwarded headers
-  const forwardedHost = event.request.headers.get("x-forwarded-host");
-  if (forwardedHost) {
-    event.url.host = forwardedHost;
-  }
+  // Console log for debugging
+  console.log("Request Details:", {
+    url: event.url.toString(),
+    host: event.url.host,
+    protocol: event.url.protocol,
+    headers: {
+      origin: event.request.headers.get("origin"),
+      host: event.request.headers.get("host"),
+      "x-forwarded-host": event.request.headers.get("x-forwarded-host"),
+      "x-forwarded-proto": event.request.headers.get("x-forwarded-proto"),
+    },
+  });
   // Your existing auth logic
   const sessionToken = event.cookies.get(auth.sessionCookieName);
   if (!sessionToken) {
