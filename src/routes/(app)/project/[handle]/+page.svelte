@@ -18,7 +18,7 @@
     } from "sveltekit-superforms";
     import { zodClient } from "sveltekit-superforms/adapters";
     import { goto } from "$app/navigation";
-    import type { ProjectData } from "@types";
+    import type { ProjectData, RoomWithRelations } from "@types";
     import { getTotalBoxes } from "@utils";
     import CreateRoomForm from "@components/projects/CreateRoomForm.svelte";
     import type { ActionResult } from "@sveltejs/kit";
@@ -28,7 +28,7 @@
     }: {
         data: {
             project: ProjectData;
-            rooms: Room[];
+            rooms: RoomWithRelations;
             form: SuperValidated<Infer<RoomSchema>>;
         };
     } = $props();

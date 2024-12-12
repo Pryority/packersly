@@ -57,7 +57,7 @@
                     const boxId = segments[boxIndex + 1];
                     breadcrumbs.push({
                         label: `Box ${boxId}`,
-                        href: `/project/${projectSlug}/room/${roomSlug}/box/${boxId}`,
+                        href: `/project/${projectSlug}/room/${roomSlug}/box/`,
                     });
                 }
             }

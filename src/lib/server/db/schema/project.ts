@@ -29,6 +29,7 @@ const project = pgTable(
       // Add raw SQL constraints for min and max length
       nameLengthConstraint: sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
       handleLengthConstraint: sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
+      uniqueHandlePerUser: sql`CONSTRAINT unique_project_handle_per_user UNIQUE (${table.userId}, ${table.handle})`,
     };
   },
 );

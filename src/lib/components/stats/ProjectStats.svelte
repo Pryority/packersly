@@ -26,7 +26,8 @@
         projects: ProjectData[];
     } = $props();
 
-    let open = $state(false);
+    let dialogOpen = $state(false);
+    let sheetOpen = $state(false);
     let submitting = $state(false);
 
     const form = superForm(data, {
@@ -65,7 +66,8 @@
     $effect(() => {
         // Close dialog and show success message if project was created
         if ($page.url.searchParams.has("success")) {
-            open = false;
+            dialogOpen = false;
+            sheetOpen = false;
             // Optionally show a success toast/notification here
 
             // Clean up the URL
@@ -74,7 +76,9 @@
             goto(url.toString(), { replaceState: true });
         } else {
             // Normal dialog open/close handling
-            open = $page.url.searchParams.has("new");
+            const isMobile = window.innerWidth < 768; // matches your md: breakpoint
+            dialogOpen = !isMobile && $page.url.searchParams.has("new");
+            sheetOpen = isMobile && $page.url.searchParams.has("new");
         }
     });
 </script>
@@ -156,7 +160,10 @@
         </Card.Footer>
     </Card.Root> -->
 
-    <Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
+    <Dialog.Root
+        bind:open={dialogOpen}
+        onOpenChange={(isOpen) => !isOpen && closeForm()}
+    >
         <Dialog.Portal class="hidden md:block">
             <Dialog.Overlay
                 class="bg-background/80 backdrop-blur-sm animate-in fade-in"
@@ -164,7 +171,7 @@
             <Dialog.Content
                 class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto"
             >
-                <Dialog.Header class=" top-0 bg-background z-10 pb-4">
+                <Dialog.Header class="top-0 z-10 pb-4 w-fit">
                     <Dialog.Title>Create New Project</Dialog.Title>
                     <Dialog.Description>
                         Set up your new moving project. Add rooms and assign
@@ -178,7 +185,10 @@
         </Dialog.Portal>
     </Dialog.Root>
 
-    <Sheet.Root bind:open onOpenChange={(isOpen) => !isOpen && closeForm()}>
+    <Sheet.Root
+        bind:open={sheetOpen}
+        onOpenChange={(isOpen) => !isOpen && closeForm()}
+    >
         <Sheet.Content
             side="bottom"
             class="md:hidden  max-h-[90vh]  overflow-y-auto"

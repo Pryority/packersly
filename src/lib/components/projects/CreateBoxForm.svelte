@@ -154,9 +154,12 @@
                                     variant="destructive"
                                     on:click={() => removeItem(i)}
                                     disabled={$formData.items.length === 1}
-                                    class="md:col-span-1 h-4 w-4 self-end mb-2"
+                                    class="md:col-span-1 md:h-10 md:w-10 max-md:flex self-end mb-2 max-md:gap-2"
                                 >
-                                    <Trash class="h-8 w-8" />
+                                    <span class="md:hidden"
+                                        >Delete Item {i + 1}</span
+                                    >
+                                    <Trash class="h-4 w-4 md:h-8 md:w-8" />
                                 </Button>
                             </div>
 

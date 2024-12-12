@@ -24,6 +24,8 @@ const room = pgTable(
       // Add raw SQL constraints for min and max length
       nameLengthConstraint: sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
       handleLengthConstraint: sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
+      // Ensure unique handle per projectId (per user)
+      uniqueHandlePerProject: sql`CONSTRAINT unique_room_handle_per_project UNIQUE (${table.projectId}, ${table.handle})`,
     };
   },
 );

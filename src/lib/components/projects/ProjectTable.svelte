@@ -38,8 +38,8 @@
         {#each projects as project}
             <Table.Row on:click={() => goto(`/project/${project.handle}`)}>
                 <Table.Cell>
-                    <div class="font-medium truncate max-w-10">
-                        {project.name}asjdfasdfasdhjf
+                    <div class="font-medium max-md:truncate max-md:max-w-10">
+                        {project.name}
                     </div>
                     <div class="text-muted-foreground hidden text-sm md:inline">
                         {project.fromAddress}
@@ -69,19 +69,19 @@
                     {new Date(project.createdAt).toLocaleDateString()}
                 </Table.Cell>
                 <Table.Cell class="max-md:w-2">
-                    <span class="text-center md:text-start">
+                    <span class="md:flex md:gap-1 text-center md:text-start">
                         {getTotalRooms(project)}
                         <span class="hidden md:block">rooms</span>
                     </span>
                 </Table.Cell>
                 <Table.Cell>
-                    <span class="text-center md:text-start">
+                    <span class="md:flex md:gap-1 text-center md:text-start">
                         {getTotalBoxes(project)}
                         <span class="hidden md:block">boxes</span>
                     </span>
                 </Table.Cell>
                 <Table.Cell class="hidden md:table-cell">
-                    <span class="text-center md:text-start">
+                    <span class="md:flex md:gap-1 text-center md:text-start">
                         {getTotalItems(project)}
                         <span class="hidden md:block">items</span>
                     </span>

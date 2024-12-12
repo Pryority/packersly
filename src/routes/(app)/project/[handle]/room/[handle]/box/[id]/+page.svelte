@@ -1,6 +1,7 @@
 <!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
     import { enhance } from "$app/forms";
+    import { goto, beforeNavigate } from "$app/navigation";
     import Ellipsis from "lucide-svelte/icons/ellipsis";
     import Download from "lucide-svelte/icons/download";
     import { Button } from "@components/ui/button/index.js";

@@ -9,24 +9,27 @@ import {
 import type { PageServerLoad } from "./$types";
 import db from "@db";
 import { project, room } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  console.log(url);
+  // console.log(url);
 
-  const urlPathname = url.pathname; // "/project/the-big-move"
-  const pathSegments = urlPathname.split("/");
-  const projectHandle = pathSegments[pathSegments.length - 1]; // "the-big-move"
+  // const urlPathname = url.pathname; // "/project/the-big-move"
+  // const pathSegments = urlPathname.split("/");
+  // const projectHandle = pathSegments[pathSegments.length - 1]; // "the-big-move"
   const PROJECT = await db.query.project.findFirst({
-    where: eq(project.handle, projectHandle),
+    where: and(
+      eq(project.handle, params.handle),
+      eq(project.userId, locals.user.id),
+    ),
     with: {
       rooms: {
         with: {

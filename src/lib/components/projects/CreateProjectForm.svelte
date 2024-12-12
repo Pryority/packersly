@@ -48,7 +48,7 @@
                 if (field.startsWith("rooms.")) {
                     const [_, index, subField] = field.split(".");
                     errList.push(
-                        `Room ${parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
+                        `Room ${Number.parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
                     );
                 } else {
                     errList.push(`${fieldErrors[0]}`);

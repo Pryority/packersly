@@ -8,7 +8,7 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { box, item, project, room, type Box } from "@db/schema";
+import { box, item, project, room } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
@@ -20,30 +20,40 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
     throw redirect(302, "/login");
   }
 
-  // Use the room handle from params instead of trying to parse URL
-  const roomHandle = params.handle;
+  // console.log(url);
 
-  // First get the room by its handle
-  const ROOM = await db.query.room.findFirst({
-    where: eq(room.handle, roomHandle),
+  const urlPathname = url.pathname; // "/project/the-big-move"
+  const pathSegments = urlPathname.split("/");
+  const projectHandle = pathSegments[2]; // "the-big-move"
+  console.log("urlPathname", urlPathname);
+  console.log("pathSegments", pathSegments);
+  console.log("projectHandle", projectHandle);
+
+  const PROJECT = await db.query.project.findFirst({
+    where: and(
+      eq(project.handle, projectHandle),
+      eq(project.userId, locals.user.id),
+    ),
     with: {
-      boxes: {
+      rooms: {
         with: {
-          items: true,
+          boxes: true,
         },
       },
     },
   });
 
-  if (!ROOM) {
-    throw redirect(302, "/dashboard"); // or handle the "room not found" case differently
+  console.log("Raw PROJECT query result:", PROJECT);
+  // // console.log("ROOM boxes length:", ROOM?.boxes?.length);
+  // // console.log("First box details:", ROOM?.boxes?.[0]);
+
+  if (!PROJECT) {
+    throw redirect(302, "/dashboard"); // or handle the "room not found" case
   }
 
-  console.log("[Room Handle Page Server] Load Data:", { ROOM });
-
   return {
-    room: ROOM,
-    boxes: ROOM.boxes,
+    // room: ROOM,
+    room: PROJECT.rooms.find((r) => r.handle === params.handle),
     form: await superValidate(zod(boxSchema)),
   };
 };
