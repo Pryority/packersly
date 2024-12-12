@@ -9,13 +9,21 @@ const config = {
 
   kit: {
     adapter: adapter({
-      dynamic_origin: true, // This helps with Railway's proxy setup
-      precompress: true, // Enable compression for better performance
+      // Existing options
+      dynamic_origin: true,
+      precompress: true,
       envPrefix: "",
+
+      // Add these proxy-related options
+      protocol_header: "x-forwarded-proto",
+      host_header: "x-forwarded-host",
+      address_header: "x-forwarded-for",
+      xff_depth: 1,
+
+      // Ensure proper host/port binding for Railway
+      host: "0.0.0.0", // Allow connections from all network interfaces
+      port: process.env.PORT || 3000,
     }),
-    csrf: {
-      checkOrigin: true,
-    },
     env: {
       dir: ".",
       publicPrefix: "PUBLIC_",
