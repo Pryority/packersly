@@ -17,6 +17,8 @@
     import type { ActionResult } from "@sveltejs/kit";
     import type { ProjectData } from "@types";
     import { getProjectStats } from "@utils";
+    import CreateProjectDialog from "@components/projects/CreateProjectDialog.svelte";
+    import CreateProjectSheet from "@components/projects/CreateProjectSheet.svelte";
 
     const {
         data,
@@ -168,42 +170,7 @@
             />
         </Card.Footer>
     </Card.Root> -->
-
-    <Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
-        <Dialog.Portal class="hidden md:block">
-            <Dialog.Overlay
-                class="bg-background/80 backdrop-blur-sm animate-in fade-in"
-            />
-            <Dialog.Content
-                class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto"
-            >
-                <Dialog.Header class="top-0 z-10 pb-4 w-fit">
-                    <Dialog.Title>Create New Project</Dialog.Title>
-                    <Dialog.Description>
-                        Set up your new moving project. Add rooms and assign
-                        them colors for easy organization.
-                    </Dialog.Description>
-                </Dialog.Header>
-                <div>
-                    <CreateProjectForm {form} {submitting} />
-                </div>
-            </Dialog.Content>
-        </Dialog.Portal>
-    </Dialog.Root>
-
-    <Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
-        <Sheet.Content
-            side="bottom"
-            class="md:hidden  max-h-[90vh]  overflow-y-auto"
-        >
-            <Sheet.Header class="mb-4">
-                <Sheet.Title>Create New Project</Sheet.Title>
-                <Sheet.Description class="text-xs">
-                    Set up your new moving project. Add rooms and assign them
-                    colors for easy organization.
-                </Sheet.Description>
-            </Sheet.Header>
-            <CreateProjectForm {form} {submitting} />
-        </Sheet.Content>
-    </Sheet.Root>
 </div>
+
+<CreateProjectDialog bind:open={dialogOpen} {form} {submitting} />
+<CreateProjectSheet bind:open={sheetOpen} {form} {submitting} />

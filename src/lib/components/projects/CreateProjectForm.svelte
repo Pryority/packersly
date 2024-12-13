@@ -13,7 +13,6 @@
         type SuperForm,
     } from "sveltekit-superforms";
     import Trash from "lucide-svelte/icons/trash";
-    import AlertCircle from "lucide-svelte/icons/alert-circle";
     import { Separator } from "@components/ui/separator";
 
     let {
@@ -40,32 +39,6 @@
             rooms: $formData.rooms.filter((_, i) => i !== index),
         }));
     }
-
-    // Function to format field errors for display
-    function getFormattedErrors() {
-        const errList = [];
-        for (const [field, fieldErrors] of Object.entries($errors)) {
-            if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
-                // Handle nested room errors
-                if (field.startsWith("rooms.")) {
-                    const [_, index, subField] = field.split(".");
-                    errList.push(
-                        `Room ${Number.parseInt(index) + 1} ${subField}: ${fieldErrors[0]}`,
-                    );
-                } else {
-                    errList.push(`${fieldErrors[0]}`);
-                }
-            }
-        }
-        return errList;
-    }
-
-    // Show error dialog when there are errors (on mobile/tablet only)
-    // $effect(() => {
-    //     if (Object.keys($errors).length > 0 && window.innerWidth < 768) {
-    //         errorDialogOpen = true;
-    //     }
-    // });
 
     $effect(() => {
         if ($formData.rooms.length === 0) {
