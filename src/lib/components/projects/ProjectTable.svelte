@@ -24,7 +24,7 @@
             <Table.Head class="hidden md:table-cell">Created</Table.Head>
             <Table.Head>Rooms</Table.Head>
             <Table.Head>Boxes</Table.Head>
-            <Table.Head class="hidden md:table-cell">Items</Table.Head>
+            <Table.Head>Items</Table.Head>
             <!-- <Table.Head class="text-right">View</Table.Head> -->
             <!-- <Table.Head>
                 <span class="sr-only">Actions</span>
@@ -38,7 +38,7 @@
         {#each projects as project}
             <Table.Row on:click={() => goto(`/project/${project.handle}`)}>
                 <Table.Cell>
-                    <div class="font-medium max-md:truncate max-md:max-w-10">
+                    <div class="font-medium max-md:truncate max-md:max-w-20">
                         {project.name}
                     </div>
                     <div class="text-muted-foreground hidden text-sm md:inline">
@@ -69,68 +69,14 @@
                     {new Date(project.createdAt).toLocaleDateString()}
                 </Table.Cell>
                 <Table.Cell class="max-md:w-2">
-                    <!-- <span class="md:flex md:gap-1 text-center"> -->
                     {getTotalRooms(project)}
-                    <!-- <span class="hidden md:block">rooms</span> -->
-                    <!-- </span> -->
                 </Table.Cell>
                 <Table.Cell>
-                    <!-- <span class="md:flex md:gap-1 text-center md:text-start"> -->
                     {getTotalBoxes(project)}
-                    <!-- <span class="hidden md:block">boxes</span> -->
-                    <!-- </span> -->
                 </Table.Cell>
-                <Table.Cell class="hidden md:table-cell">
-                    <!-- <span class="md:flex md:gap-1 text-center md:text-start"> -->
+                <Table.Cell>
                     {getTotalItems(project)}
-                    <!-- <span class="hidden md:block">items</span> -->
-                    <!-- </span> -->
                 </Table.Cell>
-                <!-- <Table.Cell class="flex items-center justify-center">
-                    <a
-                        href={`/project/${project.handle}`}
-                        class="mt-2"
-                        data-sveltekit-preload-code="eager"
-                    >
-                        <FolderSymlink />
-                    </a>
-                </Table.Cell> -->
-                <!-- <Table.Cell class="w-10">
-                    <DropdownMenu.Root>
-                        <DropdownMenu.Trigger asChild let:builder>
-                            <Button
-                                aria-haspopup="true"
-                                size="icon"
-                                variant="outline"
-                                class="group"
-                                builders={[builder]}
-                            >
-                                <Cog
-                                    class="h-4 w-4 group-hover:rotate-45 transition-all"
-                                />
-                                <span class="sr-only">Toggle menu</span>
-                            </Button>
-                        </DropdownMenu.Trigger>
-                        <DropdownMenu.Content align="end">
-                            <DropdownMenu.Label>Actions</DropdownMenu.Label>
-                            <a href={`/project/${project.handle}`}>
-                                <DropdownMenu.Item>View</DropdownMenu.Item>
-                            </a>
-                            <DropdownMenu.Item>Edit</DropdownMenu.Item>
-                            <DropdownMenu.Item>Delete</DropdownMenu.Item>
-                        </DropdownMenu.Content>
-                    </DropdownMenu.Root>
-                </Table.Cell> -->
-                <!-- <Table.Cell class="w-10">
-                    <a href={`/project/${project.handle}`} class="group">
-                        <Button size="sm"
-                            ><ArrowRight
-                                size={16}
-                                class="group-hover:translate-x-1 transition-all"
-                            /></Button
-                        >
-                    </a>
-                </Table.Cell> -->
             </Table.Row>
         {/each}
     </Table.Body>

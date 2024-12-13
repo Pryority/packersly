@@ -185,9 +185,9 @@
         />
         <Dialog.Content class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
             <Dialog.Header class="top-0 z-10 pb-4 max-w-fit">
-                <Dialog.Title>Create New Box</Dialog.Title>
+                <Dialog.Title>Add a Box to Room</Dialog.Title>
                 <Dialog.Description class="flex flex-col gap-4">
-                    Update your existing project. Add boxes with items for easy
+                    Update your room. Add boxes with items for easy
                     organization.
                     <span class="flex items-center gap-2">
                         <strong class="max-md:text-xs">Room Name:</strong>
@@ -217,13 +217,13 @@
 <Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
     <Sheet.Content side="bottom" class="md:hidden max-h-[90vh] overflow-y-auto">
         <Sheet.Header class="mb-4">
-            <Sheet.Title>Create New Box</Sheet.Title>
+            <Sheet.Title>Add a Box to Room</Sheet.Title>
             <Sheet.Description class="flex flex-col gap-4 text-xs">
-                Update your existing project. Add boxes with items for easy
-                organization.<br />
+                Update your room. Add boxes with items for easy organization.<br
+                />
                 <span class="flex justify-between">
                     <span class="flex items-center gap-2">
-                        <strong class="max-md:text-xs md:hidden">Name:</strong>
+                        <strong class="max-md:text-xs md:hidden">Room:</strong>
                         <span class="mad-md:text-xs">
                             {data.room.name}
                         </span>
