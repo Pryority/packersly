@@ -104,14 +104,18 @@
         <Card.Title>Box Details</Card.Title>
         <Card.Description>View and manage items in this box.</Card.Description>
         {#if box.qrCode}
-            <span class="mt-4 flex flex-col items-center gap-2">
-                <span class="w-64 h-64">
+            <div class="mt-4 flex flex-col items-center gap-2">
+                <div class="w-64 h-64">
                     {@html box.qrCode.replace(
                         "<svg",
                         '<svg class="h-full w-full"',
                     )}
-                </span>
-                <span class="flex flex-col items-center gap-2">
+                </div>
+                <div
+                    class="h-8 w-5/6 rounded-sm"
+                    style={`background-color: ${box.room.colorCode}`}
+                ></div>
+                <div class="flex flex-col items-center gap-2 mt-2">
                     <span class="text-sm text-muted-foreground">
                         Scan to view box contents
                     </span>
@@ -196,8 +200,8 @@
                             {$errors.qrCode?.[0] || $errors.colorCode?.[0]}
                         </span>
                     {/if}
-                </span>
-            </span>
+                </div>
+            </div>
         {/if}
     </Card.Header>
     <Card.Content>
