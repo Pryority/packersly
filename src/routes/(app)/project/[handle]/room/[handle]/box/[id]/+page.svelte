@@ -210,9 +210,9 @@
                 <Table.Row>
                     <Table.Head>Name</Table.Head>
                     <Table.Head>Quantity</Table.Head>
-                    <Table.Head>
+                    <!-- <Table.Head>
                         <span class="sr-only">Actions</span>
-                    </Table.Head>
+                    </Table.Head> -->
                 </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -222,7 +222,7 @@
                             {item.name}
                         </Table.Cell>
                         <Table.Cell>{item.quantity}</Table.Cell>
-                        <Table.Cell>
+                        <!-- <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
                                     <Button
@@ -245,7 +245,7 @@
                                     >
                                 </DropdownMenu.Content>
                             </DropdownMenu.Root>
-                        </Table.Cell>
+                        </Table.Cell> -->
                     </Table.Row>
                 {/each}
             </Table.Body>
