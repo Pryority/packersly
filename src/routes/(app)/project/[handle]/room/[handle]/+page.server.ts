@@ -178,12 +178,13 @@ export const actions = {
 
             if (form.data.items?.length) {
               await Promise.all(
-                form.data.items.map((itemData) =>
-                  tx.insert(item).values({
-                    boxId: boxId,
-                    name: itemData.name,
-                    quantity: itemData.quantity,
-                  } satisfies typeof item.$inferInsert),
+                form.data.items.map(
+                  async (itemData) =>
+                    await tx.insert(item).values({
+                      boxId: boxId,
+                      name: itemData.name,
+                      quantity: itemData.quantity,
+                    } satisfies typeof item.$inferInsert),
                 ),
               );
               console.log(`Created ${form.data.items.length} items for box`);
