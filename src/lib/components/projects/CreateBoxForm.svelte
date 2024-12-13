@@ -2,7 +2,6 @@
 <script lang="ts">
     import * as Card from "@components/ui/card";
     import * as Form from "@components/ui/form";
-    import * as Dialog from "@components/ui/dialog";
     import { Button } from "@components/ui/button";
     import { Input } from "@components/ui/input";
     import Label from "@components/ui/label/label.svelte";
@@ -12,7 +11,6 @@
         type SuperForm,
     } from "sveltekit-superforms";
     import Trash from "lucide-svelte/icons/trash";
-    import AlertCircle from "lucide-svelte/icons/alert-circle";
     import { Separator } from "@components/ui/separator";
     import boxSchema from "@routes/settings/zod/boxSchema";
     import type { BoxSchema } from "@routes/settings/zod";
@@ -84,9 +82,7 @@
                                                 placeholder="e.g. T-Shirts, Plates, Snowboard"
                                                 {...attrs}
                                             />
-                                            <Form.FieldErrors
-                                                class="hidden md:block"
-                                            />
+                                            <Form.FieldErrors />
                                         </div>
                                     </Form.Control>
                                 </Form.Field>
@@ -103,16 +99,15 @@
                                         <div class="space-y-2">
                                             <Form.Label>Quantity</Form.Label>
                                             <Input
-                                                type="numeric"
+                                                type="number"
+                                                pattern="[0-9]*"
                                                 bind:value={$formData.items[i]
                                                     .quantity}
                                                 {...attrs}
                                                 placeholder="Quantity"
                                                 min="1"
                                             />
-                                            <Form.FieldErrors
-                                                class="hidden md:block"
-                                            />
+                                            <Form.FieldErrors />
                                         </div>
                                     </Form.Control>
                                 </Form.Field>
