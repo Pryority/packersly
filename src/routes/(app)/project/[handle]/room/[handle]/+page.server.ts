@@ -68,48 +68,39 @@ export const actions = {
     if (!locals.user) {
       throw error(401, "Unauthorized");
     }
-
     const form = await superValidate(request, zod(boxSchema));
     if (!form.valid) {
       return fail(400, { form });
     }
-
     const pathParts = url.pathname.split("/");
     const projectHandle = pathParts[2];
     const roomHandle = params.handle;
-
     if (!roomHandle || !projectHandle) {
       return fail(400, {
         form,
         message: "Both project and room handles are required",
       });
     }
-
     try {
       // Verify project and room access first
       const PROJECT = await db.query.project.findFirst({
         where: eq(project.handle, projectHandle),
         columns: { id: true, userId: true },
       });
-
       if (!PROJECT || PROJECT.userId !== locals.user.id) {
         return fail(403, { form, message: "Project access denied" });
       }
-
       const ROOM = await db.query.room.findFirst({
         where: and(eq(room.handle, roomHandle), eq(room.projectId, PROJECT.id)),
       });
-
       if (!ROOM) {
         return fail(404, { form, message: "Room not found" });
       }
-
       const boxId = crypto.randomUUID();
       const accessToken = crypto.randomUUID();
 
-      // Single transaction for box, items, and QR code
       const [boxResult, qrResult] = await db.transaction(async (tx) => {
-        // 1. Create box
+        // 1. Create box using tx
         const [box] = await tx
           .insert(boxTable)
           .values({
@@ -124,7 +115,7 @@ export const actions = {
           throw new Error("Failed to create box");
         }
 
-        // 2. Create items if they exist
+        // 2. Create items if they exist using tx
         if (form.data.items?.length) {
           const CHUNK_SIZE = 100;
           for (let i = 0; i < form.data.items.length; i += CHUNK_SIZE) {
@@ -140,13 +131,14 @@ export const actions = {
           }
         }
 
-        // 3. Generate and store QR code
+        // 3. Generate QR code URL
         const boxUrl = new URL(
           `/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
           `https://${url.host}`,
         );
         boxUrl.searchParams.set("token", accessToken);
 
+        // 4. Generate QR code
         const qrCodeSvg = await Promise.race([
           QRCode.toString(boxUrl.toString(), {
             type: "svg",
@@ -162,6 +154,7 @@ export const actions = {
           ),
         ]);
 
+        // 5. Store QR code using tx
         const [qr] = await tx
           .insert(qrCode)
           .values({
@@ -170,8 +163,16 @@ export const actions = {
           })
           .returning();
 
+        if (!qr) {
+          throw new Error("Failed to create QR code");
+        }
+
         return [box, qr];
       });
+
+      if (!boxResult || !qrResult) {
+        throw new Error("Failed to create box or QR code");
+      }
 
       throw redirect(303, `${url.pathname}/box/${boxId}`);
     } catch (error) {
