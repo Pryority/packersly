@@ -37,6 +37,9 @@
             return async ({ result }: { result: ActionResult }) => {
                 submitting = false;
                 if (result.type === "error") {
+                    submitting = false;
+                    dialogOpen = false;
+                    sheetOpen = false;
                     cancel();
                 }
                 // Don't handle redirect here - let SvelteKit handle it

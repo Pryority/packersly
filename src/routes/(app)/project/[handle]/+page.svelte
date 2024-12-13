@@ -53,6 +53,8 @@
             return async ({ result }: { result: ActionResult }) => {
                 if (result.type === "error" || result.type === "failure") {
                     submittingRoom = false;
+                    createDialogOpen = false;
+                    createSheetOpen = false;
                     cancel();
                 }
                 // Don't handle redirect here - let SvelteKit handle it
@@ -63,8 +65,6 @@
         },
         onResult: () => {
             submittingRoom = false;
-            createDialogOpen = false;
-            createSheetOpen = false;
         },
     });
 
