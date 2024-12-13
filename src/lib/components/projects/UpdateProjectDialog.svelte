@@ -30,8 +30,7 @@
                 <Dialog.Header class="top-0 z-10 pb-4 w-fit">
                     <Dialog.Title>Update Project</Dialog.Title>
                     <Dialog.Description>
-                        Set up your new moving project. Add rooms and assign
-                        them colors for easy organization.
+                        Update information about this moving project.
                     </Dialog.Description>
                 </Dialog.Header>
                 <UpdateProjectForm {form} {submitting} {projectId} />

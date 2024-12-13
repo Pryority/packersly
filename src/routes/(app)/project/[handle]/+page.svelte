@@ -26,6 +26,8 @@
     import type { ActionResult } from "@sveltejs/kit";
     import UpdateProjectDialog from "@components/projects/UpdateProjectDialog.svelte";
     import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
+    import UpdateProjectForm from "@components/projects/UpdateProjectForm.svelte";
+    import UpdateProjectSheet from "@components/projects/UpdateProjectSheet.svelte";
 
     const {
         data,
@@ -115,7 +117,7 @@
             <Card.Title class="flex items-center"
                 >{data.project.name}</Card.Title
             >
-            <Card.Description>
+            <Card.Description class="max-md:text-xs">
                 Manage rooms for this project.
                 {#if data.project.rooms.length > 0}
                     <br />Click on a room its boxes.
@@ -129,7 +131,7 @@
                     builders={[builder]}
                     size="icon"
                     variant="outline"
-                    class="h-10 w-10"
+                    class="h-8 w-8 md:h-10 md:w-10"
                 >
                     <EllipsisVertical class="h-4 w-4" />
                     <span class="sr-only">Open menu</span>
@@ -153,8 +155,10 @@
             <Table.Root>
                 <Table.Header>
                     <Table.Row>
-                        <Table.Head class="w-16">Colour</Table.Head>
-                        <Table.Head>Room Name</Table.Head>
+                        <Table.Head class="md:w-16">Colour</Table.Head>
+                        <Table.Head class="whitespace-nowrap"
+                            >Room Name</Table.Head
+                        >
                         <Table.Head class="max-md:text-center">Boxes</Table.Head
                         >
                         <Table.Head class="max-md:text-center">Items</Table.Head
@@ -175,7 +179,7 @@
                             <Table.Cell class="w-fit bg-red-500x">
                                 <div class="flex flex-col items-center gap-1">
                                     <div
-                                        class="w-12 aspect-square rounded-sm"
+                                        class="w-8 md:w-12 aspect-square rounded-sm"
                                         style={`background-color: ${room.colorCode};`}
                                     ></div>
                                     <span class="text-[8px]">
@@ -184,7 +188,7 @@
                                 </div>
                             </Table.Cell>
                             <Table.Cell
-                                class="md:text-lg md:max-w-24 md:truncate"
+                                class="md:text-lg md:max-w-24 md:truncate whitespace-nowrap"
                                 >{room.name}</Table.Cell
                             >
 
@@ -305,6 +309,13 @@
 <UpdateProjectDialog
     projectId={data.project.id}
     open={updateDialogOpen}
+    form={projectUpdateForm}
+    submitting={submittingUpdate}
+/>
+
+<UpdateProjectSheet
+    projectId={data.project.id}
+    open={updateSheetOpen}
     form={projectUpdateForm}
     submitting={submittingUpdate}
 />
