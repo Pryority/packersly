@@ -101,11 +101,22 @@
 
     $effect(() => {
         if (box.qrCode?.url && (!$formData.qrCode || !$formData.colorCode)) {
-            formData.update(($formData) => ({
-                ...$formData,
-                qrCode: box.qrCode.url,
-                colorCode: data.box.room.colorCode,
-            }));
+            QRCode.toString(box.qrCode.url, {
+                type: "svg",
+                margin: 0,
+                errorCorrectionLevel: "M",
+                width: 256,
+            })
+                .then((qrCodeSvg) => {
+                    formData.update(($formData) => ({
+                        ...$formData,
+                        qrCode: qrCodeSvg, // Send the SVG content instead of the URL
+                        colorCode: data.box.room.colorCode,
+                    }));
+                })
+                .catch((err) => {
+                    console.error("Error generating QR code SVG:", err);
+                });
         }
     });
 </script>

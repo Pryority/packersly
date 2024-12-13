@@ -9,29 +9,41 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // Parse the original SVG to get its viewBox
     const viewBoxMatch = qrCode.match(/viewBox="([^"]+)"/);
-    const [x, y, width, height] = (viewBoxMatch?.[1] || "0 0 100 100")
+    const [x, y, width, height] = (viewBoxMatch?.[1] || "0 0 256 256")
       .split(" ")
       .map(Number);
 
-    // Calculate dimensions for the color bar
-    const padding = width * 0.1;
-    const barHeight = height * 0.2;
-    const gap = height * 0.05;
-    const newHeight = height + gap + barHeight;
+    // Add padding for the border
+    const borderWidth = width * 0.05; // 5% of width for border
+    const padding = width * 0.05; // 5% of width for padding
+    const totalSize = width + (padding + borderWidth) * 2;
 
-    // Create the new SVG with color bar
+    // Create the new SVG with border
     const modifiedSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${width} ${newHeight}">
-        <rect x="${x}" y="${y}" width="${width}" height="${newHeight}" fill="white"/>
-        ${qrCode.replace(/<svg[^>]*>|<\/svg>/g, "")}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 ${totalSize} ${totalSize}"
+      >
         <rect
-          x="${x + padding}"
-          y="${height + gap}"
-          width="${width - padding * 2}"
-          height="${barHeight}"
-          fill="${colorCode}"
-          rx="${barHeight * 0.1}"
+          x="0"
+          y="0"
+          width="${totalSize}"
+          height="${totalSize}"
+          fill="white"
         />
+        <rect
+          x="${borderWidth}"
+          y="${borderWidth}"
+          width="${totalSize - borderWidth * 2}"
+          height="${totalSize - borderWidth * 2}"
+          fill="white"
+          stroke="${colorCode}"
+          stroke-width="${borderWidth}"
+          rx="${width * 0.05}"
+        />
+        <g transform="translate(${padding + borderWidth}, ${padding + borderWidth})">
+          ${qrCode.replace(/<svg[^>]*>|<\/svg>/g, "")}
+        </g>
       </svg>
     `;
 
@@ -42,6 +54,7 @@ export const POST: RequestHandler = async ({ request }) => {
       },
     });
   } catch (err) {
+    console.error("QR Code generation error:", err);
     throw error(500, "Failed to generate QR code");
   }
 };
