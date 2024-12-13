@@ -6,7 +6,7 @@ import env from "../../env";
 import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 
-const myEnv = config({ path: ".env" }); // explicitly specify path
+const myEnv = config({ path: ".env" });
 expand(myEnv);
 
 const connectionConfig = {
@@ -18,13 +18,35 @@ const connectionConfig = {
   keepalive: true,
   max_lifetime: 60 * 30, // Maximum connection lifetime (30 minutes)
   statement_timeout: 10 * 1000, // 10 seconds timeout for individual statements
+  onconnect: () => {
+    console.log("Database connection established");
+  },
+  onclose: () => {
+    console.log("Database connection closed");
+  },
 };
 
 export const connection = postgres(env.DATABASE_URL, connectionConfig);
 
 const db = drizzle(connection, {
   schema,
-  logger: env.NODE_ENV === "development",
+  logger:
+    env.NODE_ENV === "development"
+      ? {
+          logQuery: (query, params) => {
+            console.log("DB Query:", {
+              query,
+              params,
+              timestamp: new Date().toISOString(),
+            });
+          },
+        }
+      : false,
+});
+
+// Global error handler for unhandled promises
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
 export type DB = typeof db;
