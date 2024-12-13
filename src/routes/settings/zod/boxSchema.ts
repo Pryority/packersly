@@ -3,7 +3,10 @@ import { z } from "zod";
 import itemSchema from "./itemSchema";
 
 const boxSchema = z.object({
-  items: z.array(itemSchema).optional(),
+  items: z
+    .array(itemSchema)
+    .optional()
+    .default([{ name: "", quantity: 1 }]),
 });
 
 export type BoxSchema = typeof boxSchema;
