@@ -108,8 +108,10 @@
                             <Table.Cell>
                                 {#if box.qrCode}
                                     <div
-                                        class="w-16 h-16 md:w-32 md:h-32 p-1 rounded-lg"
-                                        style={`border: 2px solid ${data.room.colorCode}`}
+                                        class={cn(
+                                            "w-16 h-16 md:w-32 md:h-32 p-1 rounded-lg border-2 md:border-8",
+                                            `border-[data.room.colorCode]`,
+                                        )}
                                     >
                                         {#if box.qrCode?.code}
                                             {@html box.qrCode.code.replace(
