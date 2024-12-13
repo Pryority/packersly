@@ -105,7 +105,10 @@
         <Card.Description>View and manage items in this box.</Card.Description>
         {#if box.qrCode}
             <div class="mt-4 flex flex-col items-center gap-2">
-                <div class="w-64 h-64">
+                <div
+                    class="w-64 h-64 p-4 rounded-lg"
+                    style={`border: 8px solid ${box.room.colorCode}`}
+                >
                     {#if box.qrCode?.code}
                         {@html box.qrCode.code.replace(
                             "<svg",
@@ -113,10 +116,6 @@
                         )}
                     {/if}
                 </div>
-                <div
-                    class="h-8 w-5/6 rounded-sm"
-                    style={`background-color: ${box.room.colorCode}`}
-                ></div>
                 <div class="flex flex-col items-center gap-2 mt-2">
                     <span class="text-sm text-muted-foreground">
                         Scan to view box contents
