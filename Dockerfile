@@ -37,7 +37,10 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV ORIGIN="https://packersly-production.up.railway.app"
+ENV PROTOCOL_HEADER="x-forwarded-proto"
+ENV HOST_HEADER="x-forwarded-host"
+
 # Expose the port your app runs on from Environment variables
 EXPOSE ${PORT}
 # Push Drizzle schema and start the app
-CMD bun db:migrate && ORIGIN="https://packersly-production.up.railway.app" bun run start
+CMD bun db:migrate && bun run start
