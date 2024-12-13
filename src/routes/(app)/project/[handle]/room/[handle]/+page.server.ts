@@ -183,31 +183,58 @@ export const actions = {
                 const itemInsertPromises = form.data.items.map(
                   async (itemData) => {
                     console.log(`Inserting item: ${JSON.stringify(itemData)}`);
-                    const insertResult = await tx.insert(item).values({
-                      boxId: boxId,
-                      name: itemData.name,
-                      quantity: itemData.quantity,
-                    } satisfies typeof item.$inferInsert);
-                    console.log(
-                      `Item insert result: ${JSON.stringify(insertResult)}`,
-                    );
-                    return insertResult;
+
+                    // Add more detailed logging and error handling
+                    try {
+                      const insertResult = await tx.insert(item).values({
+                        boxId: boxId,
+                        name: itemData.name,
+                        quantity: itemData.quantity,
+                      } satisfies typeof item.$inferInsert);
+
+                      console.log(
+                        `Item insert result: ${JSON.stringify(insertResult)}`,
+                      );
+                      return insertResult;
+                    } catch (specificItemError) {
+                      console.error("Specific item insert error:", {
+                        itemData,
+                        error: specificItemError,
+                        timestamp: new Date().toISOString(),
+                      });
+                      throw specificItemError;
+                    }
                   },
                 );
 
-                const itemInsertResults = await Promise.all(itemInsertPromises);
+                const itemInsertResults =
+                  await Promise.allSettled(itemInsertPromises);
+
+                // Check for any failed promises
+                const failedInserts = itemInsertResults.filter(
+                  (result) => result.status === "rejected",
+                );
+
+                if (failedInserts.length > 0) {
+                  console.error("Some items failed to insert:", failedInserts);
+                  throw new Error(
+                    `Failed to insert ${failedInserts.length} items`,
+                  );
+                }
+
                 console.log(
                   `Successfully inserted ${itemInsertResults.length} items`,
                 );
               } catch (itemInsertError: any) {
-                console.error("Error inserting items:", {
+                console.error("Comprehensive item insert error:", {
                   error: itemInsertError,
                   name: itemInsertError.name,
                   message: itemInsertError.message,
                   stack: itemInsertError.stack,
                   code: itemInsertError.code,
+                  timestamp: new Date().toISOString(),
                 });
-                throw itemInsertError; // Rethrow to trigger transaction rollback
+                throw itemInsertError;
               }
             }
             // if (form.data.items?.length) {
