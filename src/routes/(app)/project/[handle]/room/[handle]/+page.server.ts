@@ -127,8 +127,7 @@ export const actions = {
       try {
         const boxId = crypto.randomUUID();
         const newBox = await db.transaction(async (tx) => {
-          console.log("Starting transaction");
-
+          console.log("Transaction started", new Date().toISOString());
           try {
             const accessToken = crypto.randomUUID();
 
@@ -244,8 +243,15 @@ export const actions = {
             console.log("Room counts updated");
 
             return createdBox;
-          } catch (innerError) {
-            console.error("Error inside transaction:", innerError);
+          } catch (innerError: any) {
+            console.error("Transaction inner error:", {
+              error: innerError,
+              name: innerError.name,
+              message: innerError.message,
+              stack: innerError.stack,
+              code: innerError.code,
+              timestamp: new Date().toISOString(),
+            });
             throw innerError;
           }
         });
