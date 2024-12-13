@@ -124,93 +124,145 @@ export const actions = {
         });
       }
 
-      // Use a transaction to ensure all operations succeed or fail together
-      const newBox = await db.transaction(async (tx) => {
-        const accessToken = crypto.randomUUID();
+      try {
         const boxId = crypto.randomUUID();
+        const newBox = await db.transaction(async (tx) => {
+          console.log("Starting transaction");
 
-        // Create a URL with both the box ID and access token
-        const boxUrl = new URL(
-          `${url.origin}/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
-        );
-        boxUrl.searchParams.set("token", accessToken);
+          try {
+            const accessToken = crypto.randomUUID();
 
-        // Generate QR code with the complete URL including access token
-        const qrCode = await QRCode.toString(boxUrl.toString(), {
-          type: "svg",
-          margin: 1,
-          width: 256,
-          // Optional: Add error correction level for better scanning
-          errorCorrectionLevel: "M",
+            console.log("Generated IDs:", { boxId, accessToken });
+
+            const boxUrl = new URL(
+              `${url.origin}/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
+            );
+            boxUrl.searchParams.set("token", accessToken);
+            console.log("Box URL created");
+
+            // Generate QR code with a timeout
+            const qrCode = await Promise.race([
+              QRCode.toString(boxUrl.toString(), {
+                type: "svg",
+                margin: 1,
+                width: 256,
+                errorCorrectionLevel: "M",
+              }),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("QR Code generation timeout")),
+                  5000,
+                ),
+              ),
+            ]);
+            console.log("QR code generated");
+
+            // Create the box with explicit type
+            // Inside your transaction
+            const result = await tx
+              .insert(box)
+              .values({
+                id: boxId,
+                roomId: ROOM.id,
+                qrCode: qrCode as string,
+                notes: null,
+                accessToken: accessToken,
+                isPublic: false,
+              } satisfies typeof box.$inferInsert)
+              .returning();
+
+            console.log("Box created in database");
+
+            const createdBox = result[0];
+            if (!createdBox) throw new Error("Failed to create box");
+
+            if (form.data.items?.length) {
+              await Promise.all(
+                form.data.items.map((itemData) =>
+                  tx.insert(item).values({
+                    boxId: boxId,
+                    name: itemData.name,
+                    quantity: itemData.quantity,
+                  } satisfies typeof item.$inferInsert),
+                ),
+              );
+              console.log(`Created ${form.data.items.length} items for box`);
+            }
+
+            // Update room counts
+            const itemCount =
+              form.data.items?.reduce(
+                (sum, item) => sum + (item.quantity || 0),
+                0,
+              ) || 0;
+
+            await tx
+              .update(room)
+              .set({
+                boxCount: ROOM.boxCount ? ROOM.boxCount + 1 : 1,
+                itemCount: ROOM.itemCount
+                  ? ROOM.itemCount + itemCount
+                  : itemCount,
+              })
+              .where(eq(room.id, ROOM.id));
+            console.log("Room counts updated");
+
+            return createdBox;
+          } catch (innerError) {
+            console.error("Error inside transaction:", innerError);
+            throw innerError;
+          }
         });
 
-        // Create the box
-        const [createdBox] = await tx
-          .insert(box)
-          .values({
-            id: boxId,
-            roomId: ROOM.id,
-            qrCode,
-            notes: null,
-            accessToken,
-            isPublic: false,
-          })
-          .returning();
+        console.log("Transaction completed successfully");
 
-        // Create items if provided
-        if (form.data.items?.length) {
-          await Promise.all(
-            form.data.items.map((itemData) =>
-              tx.insert(item).values({
-                boxId: createdBox.id,
-                name: itemData.name,
-                quantity: itemData.quantity,
-              }),
-            ),
-          );
+        // Ensure redirect path is absolute and type safety
+        if (!newBox?.id)
+          throw new Error("Box creation failed - no ID returned");
+        const redirectPath = `${url.pathname}/box/${boxId}`;
+        console.log("Redirecting to:", redirectPath);
+
+        throw redirect(303, redirectPath);
+      } catch (error: any) {
+        // Log full error details
+        console.error("Box Creation error:", {
+          error,
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          code: error.code,
+        });
+
+        if (error as Redirect) {
+          console.log("Throwing redirect");
+          throw error;
         }
 
-        // Update room counts
-        const itemCount =
-          form.data.items?.reduce(
-            (sum, item) => sum + (item.quantity || 0),
-            0,
-          ) || 0;
+        // Check for connection-related errors
+        if (
+          error.message?.includes("connection") ||
+          error.message?.includes("timeout") ||
+          error.code === "40P01" // deadlock
+        ) {
+          return fail(503, {
+            form,
+            message: "Service temporarily unavailable. Please try again.",
+          });
+        }
 
-        await tx
-          .update(room)
-          .set({
-            boxCount: ROOM.boxCount ? ROOM.boxCount + 1 : 1, // Fixed: Start from 1 instead of 0
-            itemCount: ROOM.itemCount ? ROOM.itemCount + itemCount : itemCount,
-          })
-          .where(eq(room.id, ROOM.id));
-
-        return createdBox;
-      });
-
-      // Redirect to the box view page
-      // throw redirect(303, `${params.handle}/box/${newBox.id}`);
-      console.log("Redirect details:", {
-        currentPath: url.pathname,
-        paramsHandle: params.handle,
-        boxId: newBox.id,
-        redirectPath: `${params.handle}/box/${newBox.id}`,
-        fullRedirectPath: `${url.pathname}/box/${newBox.id}`,
-      });
-      const redirectPath = url.pathname.endsWith("/")
-        ? `${url.pathname}box/${newBox.id}`
-        : `${url.pathname}/box/${newBox.id}`;
-
-      console.log("Redirect path:", redirectPath);
-      throw redirect(303, redirectPath);
-    } catch (error) {
-      if (error as Redirect) {
-        throw error; // Re-throw redirect
+        return fail(500, {
+          form,
+          message: "An error occurred during box creation",
+        });
       }
-      console.error("Box Creation error:", error);
+    } catch (outerError: any) {
+      console.error("Outer error:", outerError);
+      if (outerError as Redirect) {
+        throw outerError;
+      }
       return fail(500, {
         form,
-        message: "An error occurred during box creation",
+        message: "An unexpected error occurred",
       });
     }
   },
