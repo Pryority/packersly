@@ -21,7 +21,7 @@ const connectionConfig = {
   max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 15, // Increased max connections
   onnotice: env.DB_SEEDING ? () => {} : undefined,
   ssl: {
-    rejectUnauthorized: true, // Stricter SSL
+    rejectUnauthorized: false, // Stricter SSL
   },
   idle_timeout: 30, // Reduced from 60 to 30 seconds
   connect_timeout: 20, // Reduced from 30 to 20 seconds
