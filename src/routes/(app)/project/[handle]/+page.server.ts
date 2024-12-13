@@ -8,11 +8,11 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { project, room } from "@db/schema";
+import { project, room, user } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
-import { roomSchema } from "@routes/settings/zod";
+import { projectSchema, roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
@@ -20,11 +20,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     throw redirect(302, "/login");
   }
 
-  // console.log(url);
-
-  // const urlPathname = url.pathname; // "/project/the-big-move"
-  // const pathSegments = urlPathname.split("/");
-  // const projectHandle = pathSegments[pathSegments.length - 1]; // "the-big-move"
   const PROJECT = await db.query.project.findFirst({
     where: and(
       eq(project.handle, params.handle),
@@ -43,9 +38,32 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
   console.log("[Project Handle Page Server] Load Data:", { PROJECT });
 
+  if (!PROJECT) {
+    console.error("Project not found");
+    throw redirect(302, "/dashboard"); // or handle the "room not found" case
+  }
+
+  // Create a new update form pre-populated with project data
+  const projectUpdateForm = await superValidate(
+    {
+      name: PROJECT.name,
+      fromAddress: PROJECT.fromAddress,
+      toAddress: PROJECT.toAddress,
+      rooms: PROJECT.rooms.map((room) => ({
+        name: room.name,
+        colorCode: room.colorCode,
+      })),
+    },
+    zod(projectSchema),
+  );
+
+  // Your existing room form
+  const createRoomForm = await superValidate(zod(roomSchema));
+
   return {
     project: PROJECT,
-    form: await superValidate(zod(roomSchema)),
+    form: createRoomForm,
+    projectUpdateForm,
   };
 };
 
@@ -128,6 +146,87 @@ export const actions = {
       return fail(500, {
         form,
         message: "An error occurred during room creation",
+      });
+    }
+  },
+  "update-project": async (event) => {
+    if (!event.locals.user) {
+      throw error(401, "Unauthorized");
+    }
+
+    const form = await superValidate(event.request, zod(projectSchema));
+    const urlPathname = event.url.pathname;
+    const pathSegments = urlPathname.split("/");
+    const projectHandle = pathSegments[2];
+
+    if (!form.valid) {
+      return fail(400, { form });
+    }
+
+    try {
+      const USER = await db.query.user.findFirst({
+        where: eq(user.id, event.locals.user.id),
+      });
+
+      if (!USER) {
+        return fail(404, { message: "User not found" });
+      }
+
+      // Verify project ownership and get project data
+      const existingProject = await db.query.project.findFirst({
+        where: and(
+          eq(project.handle, projectHandle),
+          eq(project.userId, USER.id),
+        ),
+      });
+
+      if (!existingProject) {
+        return fail(404, { message: "Project not found or unauthorized" });
+      }
+
+      await db.transaction(async (tx) => {
+        // Update project details
+        await tx
+          .update(project)
+          .set({
+            name: form.data.name,
+            handle: generateHandle(form.data.name),
+            fromAddress: form.data.fromAddress,
+            toAddress: form.data.toAddress,
+          })
+          .where(eq(project.handle, projectHandle));
+
+        // Delete existing rooms using project.id, not handle
+        await tx.delete(room).where(eq(room.projectId, existingProject.id));
+
+        // Insert updated rooms using project.id
+        if (form.data.rooms?.length) {
+          await Promise.all(
+            form.data.rooms.map((roomData) =>
+              tx.insert(room).values({
+                id: crypto.randomUUID(), // Add unique ID for new rooms
+                projectId: existingProject.id, // Use the project's ID
+                name: roomData.name,
+                handle: generateHandle(roomData.name),
+                colorCode: roomData.colorCode,
+                boxCount: 0, // Add default values
+                itemCount: 0,
+              }),
+            ),
+          );
+        }
+      });
+
+      // Redirect to the new project handle path
+      throw redirect(303, `/project/${generateHandle(form.data.name)}`);
+    } catch (error) {
+      if (error as Redirect) {
+        throw error;
+      }
+      console.error("Project Update error:", error);
+      return fail(500, {
+        form,
+        error: "An error occurred while updating the project",
       });
     }
   },

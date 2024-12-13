@@ -2,11 +2,17 @@
 <script lang="ts">
     import * as Dialog from "@components/ui/dialog";
     import * as Sheet from "@components/ui/sheet";
+    import * as DropdownMenu from "@components/ui/dropdown-menu";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
     import * as Table from "@components/ui/table/index.js";
     import { page } from "$app/stores";
-    import { roomSchema, type RoomSchema } from "@routes/settings/zod";
+    import {
+        projectSchema,
+        roomSchema,
+        type ProjectSchema,
+        type RoomSchema,
+    } from "@routes/settings/zod";
     import {
         type SuperValidated,
         type Infer,
@@ -18,6 +24,8 @@
     import { cn, getTotalBoxes, getTotalItemsOfBoxes } from "@utils";
     import CreateRoomForm from "@components/projects/CreateRoomForm.svelte";
     import type { ActionResult } from "@sveltejs/kit";
+    import UpdateProjectDialog from "@components/projects/UpdateProjectDialog.svelte";
+    import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
 
     const {
         data,
@@ -25,57 +33,120 @@
         data: {
             project: ProjectData;
             form: SuperValidated<Infer<RoomSchema>>;
+            projectUpdateForm: SuperValidated<Infer<ProjectSchema>>;
         };
     } = $props();
 
-    let dialogOpen = $state(false);
-    let sheetOpen = $state(false);
-    let submitting = $state(false);
+    let createDialogOpen = $state(false);
+    let updateDialogOpen = $state(false);
+    let createSheetOpen = $state(false);
+    let updateSheetOpen = $state(false);
+    let submittingRoom = $state(false);
+    let submittingUpdate = $state(false);
 
     const form = superForm(data.form, {
         validators: zodClient(roomSchema),
         dataType: "json",
         taintedMessage: null,
         onSubmit: ({ cancel }) => {
-            submitting = true;
+            submittingRoom = true;
             return async ({ result }: { result: ActionResult }) => {
                 if (result.type === "error" || result.type === "failure") {
-                    submitting = false;
+                    submittingRoom = false;
                     cancel();
                 }
                 // Don't handle redirect here - let SvelteKit handle it
             };
         },
         onError: () => {
-            submitting = false;
+            submittingRoom = false;
         },
         onResult: () => {
-            submitting = false;
-            dialogOpen = false;
-            sheetOpen = false;
+            submittingRoom = false;
+            createDialogOpen = false;
+            createSheetOpen = false;
         },
     });
 
-    function openForm() {
+    const projectUpdateForm = superForm(data.projectUpdateForm, {
+        validators: zodClient(projectSchema),
+        dataType: "json",
+        taintedMessage: null,
+        onSubmit: ({ cancel }) => {
+            submittingUpdate = true;
+            return async ({ result }: { result: ActionResult }) => {
+                if (result.type === "error" || result.type === "failure") {
+                    submittingUpdate = false;
+                    cancel();
+                }
+                // Don't handle redirect here - let SvelteKit handle it
+            };
+        },
+        onError: () => {
+            submittingUpdate = false;
+        },
+        onResult: () => {
+            submittingUpdate = false;
+            updateDialogOpen = false;
+            updateSheetOpen = false;
+        },
+    });
+
+    function openCreateForm() {
         const isMobile = window.innerWidth < 768;
-        dialogOpen = !isMobile;
-        sheetOpen = isMobile;
+        createDialogOpen = !isMobile;
+        createSheetOpen = isMobile;
+    }
+    function openUpdateForm() {
+        const isMobile = window.innerWidth < 768;
+        updateDialogOpen = !isMobile;
+        updateSheetOpen = isMobile;
     }
 </script>
 
 <Card.Root class="m-4">
     <Card.Header
         class={cn(
+            "flex flex-row items-center justify-between w-full",
             data.project.rooms && data.project.rooms.length === 0 ? "pb-4" : "",
         )}
     >
-        <Card.Title>{data.project.name}</Card.Title>
-        <Card.Description>
-            Manage boxes in this room.
-            {#if data.project.rooms.length > 0}
-                <br />Click on a row in the table to view the room.
-            {/if}
-        </Card.Description>
+        <div class="flex flex-col gap-1 w-fit">
+            <Card.Title class="flex items-center"
+                >{data.project.name}</Card.Title
+            >
+            <Card.Description>
+                Manage rooms for this project.
+                {#if data.project.rooms.length > 0}
+                    <br />Click on a room its boxes.
+                {/if}
+            </Card.Description>
+        </div>
+
+        <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild let:builder>
+                <Button
+                    builders={[builder]}
+                    size="icon"
+                    variant="outline"
+                    class="h-10 w-10"
+                >
+                    <EllipsisVertical class="h-4 w-4" />
+                    <span class="sr-only">Open menu</span>
+                </Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="end">
+                <DropdownMenu.Item on:click={openUpdateForm}>
+                    Edit Project
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator />
+                <DropdownMenu.Item
+                    class="text-destructive focus:text-destructive"
+                >
+                    Delete Project
+                </DropdownMenu.Item>
+            </DropdownMenu.Content>
+        </DropdownMenu.Root>
     </Card.Header>
     {#if data.project.rooms.length && data.project.rooms.length > 0}
         <Card.Content>
@@ -175,8 +246,13 @@
         <Card.Footer>
             <div class="text-muted-foreground text-xs">
                 Showing <strong>
-                    {getTotalBoxes(data.project)}
-                </strong> boxes
+                    {data.project.rooms.length}
+                </strong>
+                {#if data.project.rooms.length === 1}
+                    room
+                {:else}
+                    rooms
+                {/if}
             </div>
         </Card.Footer>
     {/if}
@@ -184,13 +260,13 @@
 
 <Button
     type="button"
-    on:click={openForm}
+    on:click={openCreateForm}
     class="sticky bottom-2 mx-8 md:mx-[40vw]"
 >
     Create a Room
 </Button>
 
-<Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
+<Dialog.Root bind:open={createDialogOpen} onOpenChange={(isOpen) => !isOpen}>
     <Dialog.Portal class="hidden md:block">
         <Dialog.Overlay
             class="bg-background/80 backdrop-blur-sm animate-in fade-in"
@@ -204,13 +280,13 @@
                 </Dialog.Description>
             </Dialog.Header>
             <div>
-                <CreateRoomForm {form} {submitting} />
+                <CreateRoomForm {form} submitting={submittingRoom} />
             </div>
         </Dialog.Content>
     </Dialog.Portal>
 </Dialog.Root>
 
-<Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
+<Sheet.Root bind:open={createSheetOpen} onOpenChange={(isOpen) => !isOpen}>
     <Sheet.Content
         side="bottom"
         class="md:hidden max-h-[90vh]  overflow-y-auto"
@@ -222,6 +298,13 @@
                 and items to organize.
             </Sheet.Description>
         </Sheet.Header>
-        <CreateRoomForm {form} {submitting} />
+        <CreateRoomForm {form} submitting={submittingRoom} />
     </Sheet.Content>
 </Sheet.Root>
+
+<UpdateProjectDialog
+    projectId={data.project.id}
+    open={updateDialogOpen}
+    form={projectUpdateForm}
+    submitting={submittingUpdate}
+/>
