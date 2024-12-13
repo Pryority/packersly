@@ -223,13 +223,13 @@
                 organization.<br />
                 <span class="flex justify-between">
                     <span class="flex items-center gap-2">
-                        <strong class="max-md:text-xs">Room Name:</strong>
+                        <strong class="max-md:text-xs md:hidden">Name:</strong>
                         <span class="mad-md:text-xs">
                             {data.room.name}
                         </span>
                     </span>
                     <span class="flex items-center gap-2">
-                        <strong class="max-md:text-xs">Color Code:</strong>
+                        <strong class="max-md:text-xs">Color:</strong>
                         <span
                             class="h-4 w-4 rounded-sm"
                             style={`background-color: ${data.room.colorCode}`}

@@ -87,8 +87,10 @@
 
                 {#if $formData.items}
                     {#each $formData.items as item, i}
-                        <div class="flex flex-col items-center space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div
+                            class="flex flex-col items-center space-y-4 w-full"
+                        >
+                            <div class="grid md:grid-cols-12 gap-4 w-full">
                                 <!-- Item Name -->
                                 <Form.Field
                                     {form}
@@ -140,19 +142,23 @@
                                         </div>
                                     </Form.Control>
                                 </Form.Field>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="destructive"
-                                    on:click={() => removeItem(i)}
-                                    disabled={$formData.items.length === 1}
-                                    class="md:col-span-1 md:h-10 md:w-10 max-md:flex self-end mb-2 max-md:gap-2"
+                                <div
+                                    class="flex justify-center md:col-span-1 w-full"
                                 >
-                                    <span class="md:hidden"
-                                        >Delete Item {i + 1}</span
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="destructive"
+                                        on:click={() => removeItem(i)}
+                                        disabled={$formData.items.length === 1}
+                                        class="max-md:w-32 md:h-10 md:w-10 max-md:flex self-end mb-2 max-md:gap-2"
                                     >
-                                    <Trash class="h-4 w-4 md:h-8 md:w-8" />
-                                </Button>
+                                        <span class="md:hidden"
+                                            >Delete Item {i + 1}</span
+                                        >
+                                        <Trash class="h-4 w-4 md:h-8 md:w-8" />
+                                    </Button>
+                                </div>
                             </div>
 
                             {#if i < $formData.items.length - 1}
