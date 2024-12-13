@@ -1,7 +1,5 @@
 <!-- src/routes/project/[handle]/+page.svelte -->
 <script lang="ts">
-    import * as Dialog from "@components/ui/dialog";
-    import * as Sheet from "@components/ui/sheet";
     import * as DropdownMenu from "@components/ui/dropdown-menu";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
@@ -21,13 +19,13 @@
     import { zodClient } from "sveltekit-superforms/adapters";
     import { goto } from "$app/navigation";
     import type { ProjectData } from "@types";
-    import { cn, getTotalBoxes, getTotalItemsOfBoxes } from "@utils";
-    import CreateRoomForm from "@components/projects/CreateRoomForm.svelte";
+    import { cn, getTotalItemsOfBoxes } from "@utils";
     import type { ActionResult } from "@sveltejs/kit";
     import UpdateProjectDialog from "@components/projects/UpdateProjectDialog.svelte";
     import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
-    import UpdateProjectForm from "@components/projects/UpdateProjectForm.svelte";
     import UpdateProjectSheet from "@components/projects/UpdateProjectSheet.svelte";
+    import CreateRoomSheet from "@components/projects/CreateRoomSheet.svelte";
+    import CreateRoomDialog from "@components/projects/CreateRoomDialog.svelte";
 
     const {
         data,
@@ -270,41 +268,8 @@
     Create a Room
 </Button>
 
-<Dialog.Root bind:open={createDialogOpen} onOpenChange={(isOpen) => !isOpen}>
-    <Dialog.Portal class="hidden md:block">
-        <Dialog.Overlay
-            class="bg-background/80 backdrop-blur-sm animate-in fade-in"
-        />
-        <Dialog.Content class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
-            <Dialog.Header class="top-0 max-w-fit z-10 pb-4">
-                <Dialog.Title>Create New Room</Dialog.Title>
-                <Dialog.Description>
-                    Update your existing project. Add rooms with boxes with
-                    colors and items to organize.
-                </Dialog.Description>
-            </Dialog.Header>
-            <div>
-                <CreateRoomForm {form} submitting={submittingRoom} />
-            </div>
-        </Dialog.Content>
-    </Dialog.Portal>
-</Dialog.Root>
-
-<Sheet.Root bind:open={createSheetOpen} onOpenChange={(isOpen) => !isOpen}>
-    <Sheet.Content
-        side="bottom"
-        class="md:hidden max-h-[90vh]  overflow-y-auto"
-    >
-        <Sheet.Header class="mb-4">
-            <Sheet.Title>Create New Room</Sheet.Title>
-            <Sheet.Description class="text-xs">
-                Update your existing project. Add rooms with boxes with colors
-                and items to organize.
-            </Sheet.Description>
-        </Sheet.Header>
-        <CreateRoomForm {form} submitting={submittingRoom} />
-    </Sheet.Content>
-</Sheet.Root>
+<CreateRoomDialog open={createDialogOpen} {form} submitting={submittingRoom} />
+<CreateRoomSheet open={createSheetOpen} {form} submitting={submittingRoom} />
 
 <UpdateProjectDialog
     projectId={data.project.id}
