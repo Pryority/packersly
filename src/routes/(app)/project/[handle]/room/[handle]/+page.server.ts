@@ -189,7 +189,20 @@ export const actions = {
       });
 
       // Redirect to the box view page
-      throw redirect(303, `${params.handle}/box/${newBox.id}`);
+      // throw redirect(303, `${params.handle}/box/${newBox.id}`);
+      console.log("Redirect details:", {
+        currentPath: url.pathname,
+        paramsHandle: params.handle,
+        boxId: newBox.id,
+        redirectPath: `${params.handle}/box/${newBox.id}`,
+        fullRedirectPath: `${url.pathname}/box/${newBox.id}`,
+      });
+      const redirectPath = url.pathname.endsWith("/")
+        ? `${url.pathname}box/${newBox.id}`
+        : `${url.pathname}/box/${newBox.id}`;
+
+      console.log("Redirect path:", redirectPath);
+      throw redirect(303, redirectPath);
     } catch (error) {
       if (error as Redirect) {
         throw error; // Re-throw redirect
