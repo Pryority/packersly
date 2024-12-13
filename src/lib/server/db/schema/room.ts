@@ -13,8 +13,6 @@ const room = pgTable(
     name: text("name").notNull(),
     handle: text("handle").notNull(),
     colorCode: text("color_code").notNull(),
-    boxCount: integer("box_count").default(0),
-    itemCount: integer("item_count").default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

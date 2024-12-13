@@ -128,8 +128,6 @@ export const actions = {
             name: form.data.name,
             handle: roomHandle,
             colorCode: form.data.colorCode,
-            boxCount: 0, // Initialize counters
-            itemCount: 0,
           })
           .returning();
 
@@ -209,8 +207,6 @@ export const actions = {
                 name: roomData.name,
                 handle: generateHandle(roomData.name),
                 colorCode: roomData.colorCode,
-                boxCount: 0, // Add default values
-                itemCount: 0,
               }),
             ),
           );

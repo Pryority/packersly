@@ -194,6 +194,9 @@ export const actions = {
               const failedInserts = itemInsertResults.filter(
                 (result) => result.status === "rejected",
               );
+              for (const failedInsert in failedInserts) {
+                console.error("Failed item insert:", failedInsert);
+              }
 
               if (failedInserts.length > 0) {
                 console.error("Failed item inserts:", failedInserts);
@@ -203,24 +206,6 @@ export const actions = {
               }
               console.log("Items inserted successfully");
             }
-
-            // Update room counts
-            const itemCount =
-              form.data.items?.reduce(
-                (sum, item) => sum + (item.quantity || 0),
-                0,
-              ) || 0;
-
-            await tx
-              .update(room)
-              .set({
-                boxCount: ROOM.boxCount ? ROOM.boxCount + 1 : 1,
-                itemCount: ROOM.itemCount
-                  ? ROOM.itemCount + itemCount
-                  : itemCount,
-              })
-              .where(eq(room.id, ROOM.id));
-            console.log("Room counts updated");
 
             return createdBox;
           } catch (innerError: any) {
