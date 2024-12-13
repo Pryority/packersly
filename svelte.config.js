@@ -13,6 +13,7 @@ const config = {
       precompress: true,
       envPrefix: "",
     }),
+    csrf: { checkOrigin: false },
     env: {
       dir: ".",
       publicPrefix: "PUBLIC_",
