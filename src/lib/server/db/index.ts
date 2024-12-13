@@ -10,7 +10,8 @@ const myEnv = config({ path: ".env" });
 expand(myEnv);
 
 const connectionConfig = {
-  max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 10,
+  // max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 10,
+  max: env.NODE_ENV === "production" ? 50 : 10,
   onnotice: env.DB_SEEDING ? () => {} : undefined,
   ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
   idle_timeout: 60, // Increased from 20 to 60 seconds
