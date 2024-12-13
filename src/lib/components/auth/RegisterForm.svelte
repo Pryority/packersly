@@ -42,12 +42,7 @@
     let isAgent = $state(false);
 </script>
 
-<form
-    method="POST"
-    use:enhance
-    action="?/default"
-    enctype="application/x-www-form-urlencoded"
->
+<form method="POST" use:enhance>
     <div class="space-y-4">
         <Form.Field
             {form}
