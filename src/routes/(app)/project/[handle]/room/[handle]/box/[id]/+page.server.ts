@@ -18,6 +18,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     where: eq(box.id, params.id),
     with: {
       items: true,
+      qrCode: true, // Add this line to include the QR code relation
       room: {
         with: {
           project: {
@@ -41,7 +42,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   // Check if the user has access to this box
   const hasAccess =
     // User owns the project
-    BOX.room.project.userId === locals.user.id ||
+    BOX.room?.project.userId === locals.user.id ||
     // Or the box is public (if you want to keep this option)
     BOX.isPublic ||
     // Or user has explicit access through a shared link (optional)
@@ -56,7 +57,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
       ...BOX,
       // Only include access token if user owns the project
       accessToken:
-        BOX.room.project.userId === locals.user.id
+        BOX.room?.project.userId === locals.user.id
           ? BOX.accessToken
           : undefined,
     },

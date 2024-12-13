@@ -89,10 +89,10 @@
     let submitting = $state(false);
 
     $effect(() => {
-        if (box.qrCode && (!$formData.qrCode || !$formData.colorCode)) {
+        if (box.qrCode?.code && (!$formData.qrCode || !$formData.colorCode)) {
             formData.update(($formData) => ({
                 ...$formData,
-                qrCode: box.qrCode,
+                qrCode: box.qrCode.code,
                 colorCode: data.box.room.colorCode,
             }));
         }
@@ -106,10 +106,12 @@
         {#if box.qrCode}
             <div class="mt-4 flex flex-col items-center gap-2">
                 <div class="w-64 h-64">
-                    {@html box.qrCode.replace(
-                        "<svg",
-                        '<svg class="h-full w-full"',
-                    )}
+                    {#if box.qrCode?.code}
+                        {@html box.qrCode.code.replace(
+                            "<svg",
+                            '<svg class="h-full w-full"',
+                        )}
+                    {/if}
                 </div>
                 <div
                     class="h-8 w-5/6 rounded-sm"

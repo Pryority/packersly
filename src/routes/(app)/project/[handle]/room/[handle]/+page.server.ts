@@ -8,12 +8,13 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { box, item, project, room } from "@db/schema";
+import { box, item, project, room, qrCode } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
 import QRCode from "qrcode";
+import type { Error } from "postgres";
 
 export const load: PageServerLoad = async ({ locals, url, params }) => {
   if (!locals.user) {
@@ -64,82 +65,92 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 
 export const actions = {
   "create-box": async ({ locals, request, params, url }) => {
-    console.log("Full params object:", JSON.stringify(params));
-    console.log("Full URL:", url.pathname);
-
     if (!locals.user) {
       throw error(401, "Unauthorized");
     }
 
     const form = await superValidate(request, zod(boxSchema));
+    if (!form.valid) {
+      return fail(400, { form });
+    }
+
+    const pathParts = url.pathname.split("/");
+    const projectHandle = pathParts[2];
+    const roomHandle = params.handle;
+
+    if (!roomHandle || !projectHandle) {
+      return fail(400, {
+        form,
+        message: "Both project and room handles are required",
+      });
+    }
 
     try {
-      // Get project handle from URL pathname
-      const pathParts = url.pathname.split("/");
-      const projectHandle = pathParts[2]; // /project/[projectHandle]/room/[roomHandle]
-      const roomHandle = params.handle;
-
-      console.log("Path parts:", pathParts);
-      console.log("Extracted handles:", { projectHandle, roomHandle });
-
-      if (!roomHandle || !projectHandle) {
-        return fail(400, {
-          form,
-          message: "Both project and room handles are required",
-        });
-      }
-
+      // Verify project and room access first
       const PROJECT = await db.query.project.findFirst({
         where: eq(project.handle, projectHandle),
-        columns: {
-          id: true,
-          userId: true,
-          handle: true,
-        },
+        columns: { id: true, userId: true },
       });
 
-      if (!PROJECT) {
-        return fail(404, {
-          form,
-          message: "Project not found",
-        });
+      if (!PROJECT || PROJECT.userId !== locals.user.id) {
+        return fail(403, { form, message: "Project access denied" });
       }
 
-      if (PROJECT.userId !== locals.user.id) {
-        throw error(
-          403,
-          "You don't have permission to create boxes in this project",
-        );
-      }
-
-      // Verify room ownership and get the room directly
       const ROOM = await db.query.room.findFirst({
         where: and(eq(room.handle, roomHandle), eq(room.projectId, PROJECT.id)),
       });
 
       if (!ROOM) {
-        return fail(404, {
-          form,
-          message: "Room not found",
-        });
+        return fail(404, { form, message: "Room not found" });
       }
+
+      // First transaction: Create box and items
+      const boxId = crypto.randomUUID();
+      const accessToken = crypto.randomUUID();
+
+      const newBox = await db.transaction(async (tx) => {
+        const [boxResult] = await tx
+          .insert(box)
+          .values({
+            id: boxId,
+            roomId: ROOM.id,
+            accessToken,
+            isPublic: false,
+          })
+          .returning();
+
+        if (!boxResult) {
+          throw new Error("Failed to create box");
+        }
+
+        if (form.data.items?.length) {
+          // Insert items in chunks to avoid potential query size limits
+          const CHUNK_SIZE = 100;
+          for (let i = 0; i < form.data.items.length; i += CHUNK_SIZE) {
+            const itemChunk = form.data.items.slice(i, i + CHUNK_SIZE);
+            await tx.insert(item).values(
+              itemChunk.map((itemData) => ({
+                id: crypto.randomUUID(), // Add if your item schema has an id field
+                boxId,
+                name: itemData.name,
+                quantity: itemData.quantity,
+              })),
+            );
+          }
+        }
+
+        return boxResult;
+      });
+
+      // Second transaction: Generate and store QR code
       try {
-        // Precompute values before the transaction starts
-        const boxId = crypto.randomUUID();
-        const accessToken = crypto.randomUUID();
-
-        console.log("Precomputed IDs:", { boxId, accessToken });
-
-        // Precompute box URL
         const boxUrl = new URL(
-          `${url.origin}/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
+          `/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
+          `https://${url.host}`,
         );
         boxUrl.searchParams.set("token", accessToken);
 
-        console.log("Precomputed Box URL:", boxUrl.toString());
-
-        // Generate QR code before the transaction
-        const qrCode = await Promise.race([
+        const qrCodeSvg = await Promise.race([
           QRCode.toString(boxUrl.toString(), {
             type: "svg",
             margin: 1,
@@ -148,124 +159,47 @@ export const actions = {
           }),
           new Promise((_, reject) =>
             setTimeout(
-              () => reject(new Error("QR Code generation timeout")),
+              () => reject(new Error("QR code generation timeout")),
               5000,
             ),
           ),
         ]);
 
-        console.log("Precomputed QR code generated");
-
-        // Start transaction with precomputed data
-        const newBox = await db.transaction(async (tx) => {
-          console.log("Transaction started", new Date().toISOString());
-          try {
-            // Insert the box into the database
-            const result = await tx
-              .insert(box)
-              .values({
-                id: boxId,
-                roomId: ROOM.id,
-                qrCode: qrCode as string, // Use precomputed QR code
-                notes: null,
-                accessToken: accessToken, // Use precomputed accessToken
-                isPublic: false,
-              } satisfies typeof box.$inferInsert)
-              .returning();
-
-            console.log("Box created in database");
-
-            const createdBox = result[0];
-            if (!createdBox) throw new Error("Failed to create box");
-
-            // Insert items if they exist
-            if (form.data.items?.length) {
-              console.log(`Inserting ${form.data.items.length} items`);
-              const itemInsertPromises = form.data.items.map((itemData) =>
-                tx.insert(item).values({
-                  boxId: boxId,
-                  name: itemData.name,
-                  quantity: itemData.quantity,
-                } satisfies typeof item.$inferInsert),
-              );
-
-              const itemInsertResults =
-                await Promise.allSettled(itemInsertPromises);
-              const failedInserts = itemInsertResults.filter(
-                (result) => result.status === "rejected",
-              );
-              for (const failedInsert in failedInserts) {
-                console.error("Failed item insert:", failedInsert);
-              }
-
-              if (failedInserts.length > 0) {
-                console.error("Failed item inserts:", failedInserts);
-                throw new Error(
-                  `Failed to insert ${failedInserts.length} items`,
-                );
-              }
-              console.log("Items inserted successfully");
-            }
-
-            return createdBox;
-          } catch (innerError: any) {
-            console.error("Transaction inner error:", innerError);
-            throw innerError;
-          }
+        await db.insert(qrCode).values({
+          boxId: boxId as string,
+          code: qrCodeSvg as string,
         });
+      } catch (qrError) {
+        console.error("QR Code generation/storage failed:", qrError);
+        // Log error but continue - box is still usable without QR code
+      }
 
-        console.log("Transaction complete:", newBox);
+      throw redirect(303, `${url.pathname}/box/${boxId}`);
+    } catch (error) {
+      if (error as Redirect) {
+        throw error;
+      }
 
-        // console.log("Transaction completed successfully");
+      console.error("Box Creation error:", {
+        error,
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
 
-        // Ensure redirect path is absolute and type safety
-        if (!newBox?.id)
-          throw new Error("Box creation failed - no ID returned");
-        const redirectPath = `${url.pathname}/box/${boxId}`;
-        console.log("Redirecting to:", redirectPath);
-
-        throw redirect(303, redirectPath);
-      } catch (error: any) {
-        // Log full error details
-        console.error("Box Creation error:", {
-          error,
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-          code: error.code,
-        });
-
-        if (error as Redirect) {
-          console.log("Throwing redirect");
-          throw error;
-        }
-
-        // Check for connection-related errors
-        if (
-          error.message?.includes("connection") ||
-          error.message?.includes("timeout") ||
-          error.code === "40P01" // deadlock
-        ) {
-          return fail(503, {
-            form,
-            message: "Service temporarily unavailable. Please try again.",
-          });
-        }
-
-        return fail(500, {
+      // Check for common database error patterns
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.toLowerCase().includes("duplicate key")) {
+        return fail(409, {
           form,
-          message: "An error occurred during box creation",
+          message: "A box with this access token already exists",
         });
       }
-    } catch (outerError: any) {
-      console.error("Outer error:", outerError);
-      if (outerError as Redirect) {
-        throw outerError;
-      }
+
       return fail(500, {
         form,
-        message: "An unexpected error occurred",
+        message: "An error occurred during box creation",
       });
     }
   },
-} satisfies Actions;
+} as Actions;
