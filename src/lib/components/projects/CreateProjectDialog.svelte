@@ -6,9 +6,15 @@
     import type { Infer } from "sveltekit-superforms";
     import type { ProjectSchema } from "@routes/settings/zod";
 
-    export let open = false;
-    export let form: SuperForm<Infer<ProjectSchema>>;
-    export let submitting: boolean;
+    let {
+        open = $bindable(false),
+        form,
+        submitting,
+    }: {
+        open: boolean;
+        form: SuperForm<Infer<ProjectSchema>>;
+        submitting: boolean;
+    } = $props();
 </script>
 
 {#if open}

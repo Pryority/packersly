@@ -46,6 +46,8 @@
         },
         onResult: () => {
             submitting = false;
+            dialogOpen = false;
+            sheetOpen = false;
         },
     });
 

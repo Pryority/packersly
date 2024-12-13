@@ -69,22 +69,22 @@
                     {new Date(project.createdAt).toLocaleDateString()}
                 </Table.Cell>
                 <Table.Cell class="max-md:w-2">
-                    <span class="md:flex md:gap-1 text-center md:text-start">
-                        {getTotalRooms(project)}
-                        <span class="hidden md:block">rooms</span>
-                    </span>
+                    <!-- <span class="md:flex md:gap-1 text-center"> -->
+                    {getTotalRooms(project)}
+                    <!-- <span class="hidden md:block">rooms</span> -->
+                    <!-- </span> -->
                 </Table.Cell>
                 <Table.Cell>
-                    <span class="md:flex md:gap-1 text-center md:text-start">
-                        {getTotalBoxes(project)}
-                        <span class="hidden md:block">boxes</span>
-                    </span>
+                    <!-- <span class="md:flex md:gap-1 text-center md:text-start"> -->
+                    {getTotalBoxes(project)}
+                    <!-- <span class="hidden md:block">boxes</span> -->
+                    <!-- </span> -->
                 </Table.Cell>
                 <Table.Cell class="hidden md:table-cell">
-                    <span class="md:flex md:gap-1 text-center md:text-start">
-                        {getTotalItems(project)}
-                        <span class="hidden md:block">items</span>
-                    </span>
+                    <!-- <span class="md:flex md:gap-1 text-center md:text-start"> -->
+                    {getTotalItems(project)}
+                    <!-- <span class="hidden md:block">items</span> -->
+                    <!-- </span> -->
                 </Table.Cell>
                 <!-- <Table.Cell class="flex items-center justify-center">
                     <a

@@ -2,11 +2,6 @@
 <script lang="ts">
     import * as Card from "@components/ui/card";
     import { Button } from "@components/ui/button";
-    import * as Dialog from "@components/ui/dialog";
-    import * as Sheet from "@components/ui/sheet";
-    import { CreateProjectForm } from "@components/projects";
-    import { goto } from "$app/navigation";
-    import { page } from "$app/stores";
     import {
         type SuperValidated,
         type Infer,
@@ -52,6 +47,8 @@
         },
         onResult: () => {
             submitting = false;
+            dialogOpen = false;
+            sheetOpen = false;
         },
     });
 

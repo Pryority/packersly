@@ -16,6 +16,7 @@
     import { Separator } from "@components/ui/separator";
     import boxSchema from "@routes/settings/zod/boxSchema";
     import type { BoxSchema } from "@routes/settings/zod";
+    import PlusCircle from "lucide-svelte/icons/plus-circle";
 
     const {
         form,
@@ -79,20 +80,14 @@
 <Card.Root>
     <form method="POST" action="?/create-box" use:enhance>
         <Card.Content class="space-y-6">
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <!-- <div class="flex items-center gap-2"> -->
-
+            <div class="flex flex-col items-center space-y-4">
+                <div class="w-full">
                     <Label class="text-lg">Items in Box</Label>
-                    <!-- </div> -->
-                    <Button type="button" variant="outline" on:click={addItem}>
-                        Add Item
-                    </Button>
                 </div>
 
                 {#if $formData.items}
                     {#each $formData.items as item, i}
-                        <div class="space-y-4">
+                        <div class="flex flex-col items-center space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                 <!-- Item Name -->
                                 <Form.Field
@@ -164,8 +159,19 @@
                                 <Separator class="my-6" />
                             {/if}
                         </div>
+                        <Separator />
                     {/each}
                 {/if}
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    class="flex items-center gap-2"
+                    on:click={addItem}
+                >
+                    Add Item
+                    <PlusCircle size={16} />
+                </Button>
             </div>
         </Card.Content>
 
