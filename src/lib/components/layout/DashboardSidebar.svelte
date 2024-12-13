@@ -1,10 +1,10 @@
 <!-- src/routes/dashboard/components/layout/DashboardSidebar.svelte -->
 <script lang="ts">
     import Package2 from "lucide-svelte/icons/package-2";
-    import House from "lucide-svelte/icons/house";
-    import Box from "lucide-svelte/icons/box";
-    import Settings from "lucide-svelte/icons/settings";
-    import * as Tooltip from "@components/ui/tooltip";
+    // import House from "lucide-svelte/icons/house";
+    // import Box from "lucide-svelte/icons/box";
+    // import Settings from "lucide-svelte/icons/settings";
+    // import * as Tooltip from "@components/ui/tooltip";
 </script>
 
 <aside

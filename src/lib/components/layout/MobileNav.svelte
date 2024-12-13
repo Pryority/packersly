@@ -9,7 +9,7 @@
 <Sheet.Content side="left" class="w-[80vw] sm:max-w-xs">
     <nav class="grid gap-6 text-lg font-medium">
         <a
-            href="/dashboard"
+            href="/"
             class="bg-primary text-primary-foreground group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full text-lg font-semibold"
         >
             <Package2 class="h-5 w-5 transition-all group-hover:scale-110" />
