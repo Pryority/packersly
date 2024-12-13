@@ -22,14 +22,13 @@ const connectionConfig = {
   onnotice: env.DB_SEEDING ? () => {} : undefined,
   ssl: {
     rejectUnauthorized: true, // Stricter SSL
-    ca: process.env.DATABASE_CA_CERT, // If Railway provides a CA cert
   },
   idle_timeout: 30, // Reduced from 60 to 30 seconds
   connect_timeout: 20, // Reduced from 30 to 20 seconds
   keepalive: true,
   max_lifetime: 15 * 60, // Reduced connection lifetime to 15 minutes
   statement_timeout: 5 * 1000, // Reduced to 5 seconds
-  application_name: "PackerslyApp", // Helps in connection tracking
+  application_name: "Packersly", // Helps in connection tracking
   onconnect: () => {
     console.log("Database connection established", {
       timestamp: new Date().toISOString(),
