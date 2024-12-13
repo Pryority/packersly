@@ -8,7 +8,7 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { box, item, project, room, qrCode } from "@db/schema";
+import { box as boxTable, item, project, room, qrCode } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
@@ -104,13 +104,14 @@ export const actions = {
         return fail(404, { form, message: "Room not found" });
       }
 
-      // First transaction: Create box and items
       const boxId = crypto.randomUUID();
       const accessToken = crypto.randomUUID();
 
-      const newBox = await db.transaction(async (tx) => {
-        const [boxResult] = await tx
-          .insert(box)
+      // Single transaction for box, items, and QR code
+      const [boxResult, qrResult] = await db.transaction(async (tx) => {
+        // 1. Create box
+        const [box] = await tx
+          .insert(boxTable)
           .values({
             id: boxId,
             roomId: ROOM.id,
@@ -119,18 +120,18 @@ export const actions = {
           })
           .returning();
 
-        if (!boxResult) {
+        if (!box) {
           throw new Error("Failed to create box");
         }
 
+        // 2. Create items if they exist
         if (form.data.items?.length) {
-          // Insert items in chunks to avoid potential query size limits
           const CHUNK_SIZE = 100;
           for (let i = 0; i < form.data.items.length; i += CHUNK_SIZE) {
             const itemChunk = form.data.items.slice(i, i + CHUNK_SIZE);
             await tx.insert(item).values(
               itemChunk.map((itemData) => ({
-                id: crypto.randomUUID(), // Add if your item schema has an id field
+                id: crypto.randomUUID(),
                 boxId,
                 name: itemData.name,
                 quantity: itemData.quantity,
@@ -139,11 +140,7 @@ export const actions = {
           }
         }
 
-        return boxResult;
-      });
-
-      // Second transaction: Generate and store QR code
-      try {
+        // 3. Generate and store QR code
         const boxUrl = new URL(
           `/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
           `https://${url.host}`,
@@ -165,14 +162,16 @@ export const actions = {
           ),
         ]);
 
-        await db.insert(qrCode).values({
-          boxId: boxId as string,
-          code: qrCodeSvg as string,
-        });
-      } catch (qrError) {
-        console.error("QR Code generation/storage failed:", qrError);
-        // Log error but continue - box is still usable without QR code
-      }
+        const [qr] = await tx
+          .insert(qrCode)
+          .values({
+            boxId,
+            code: qrCodeSvg as string,
+          })
+          .returning();
+
+        return [box, qr];
+      });
 
       throw redirect(303, `${url.pathname}/box/${boxId}`);
     } catch (error) {
@@ -186,7 +185,6 @@ export const actions = {
         stack: error instanceof Error ? error.stack : undefined,
       });
 
-      // Check for common database error patterns
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes("duplicate key")) {
@@ -202,4 +200,4 @@ export const actions = {
       });
     }
   },
-} as Actions;
+} satisfies Actions;
