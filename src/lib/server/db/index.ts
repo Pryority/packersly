@@ -35,11 +35,11 @@ const db = drizzle(connection, {
     env.NODE_ENV === "development"
       ? {
           logQuery: (query, params) => {
-            console.log("DB Query:", {
-              query,
-              params,
-              timestamp: new Date().toISOString(),
-            });
+            // console.log("DB Query:", {
+            //   query,
+            //   params,
+            //   timestamp: new Date().toISOString(),
+            // });
           },
         }
       : false,

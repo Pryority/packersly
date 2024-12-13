@@ -98,7 +98,9 @@
                     {#if i === breadcrumbs.length - 1}
                         <Breadcrumb.Page>{crumb.label}</Breadcrumb.Page>
                     {:else}
-                        <Breadcrumb.Link href={crumb.href}
+                        <Breadcrumb.Link
+                            href={crumb.href}
+                            data-sveltekit-preload-data="hover"
                             >{crumb.label}</Breadcrumb.Link
                         >
                     {/if}

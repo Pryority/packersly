@@ -169,6 +169,7 @@
                 <Table.Body>
                     {#each data.project.rooms as room}
                         <Table.Row
+                            data-sveltekit-preload-code="eager"
                             on:click={() =>
                                 goto(
                                     `${$page.url.pathname}/room/${room.handle}`,

@@ -18,6 +18,7 @@
 
         <a
             href="/dashboard"
+            data-sveltekit-preload-data="hover"
             class="text-muted-foreground hover:text-foreground flex items-center gap-4 px-2.5"
         >
             <House class="h-5 w-5" />
@@ -32,12 +33,12 @@
             Projects
         </a> -->
 
-        <a
+        <!-- <a
             href="/settings"
             class="text-muted-foreground hover:text-foreground flex items-center gap-4 px-2.5"
         >
             <Settings class="h-5 w-5" />
             Settings
-        </a>
+        </a> -->
     </nav>
 </Sheet.Content>

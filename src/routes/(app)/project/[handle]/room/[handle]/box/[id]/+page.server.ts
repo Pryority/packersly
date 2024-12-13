@@ -12,6 +12,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
+  console.log("LOADING BOX DATA");
 
   // First, get the box with its relationships
   const BOX = await db.query.box.findFirst({

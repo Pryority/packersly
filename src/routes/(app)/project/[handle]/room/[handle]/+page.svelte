@@ -13,7 +13,7 @@
         type Infer,
         superForm,
     } from "sveltekit-superforms";
-    import { goto } from "$app/navigation";
+    import { goto, preloadData } from "$app/navigation";
     import { zodClient } from "sveltekit-superforms/adapters";
     import type { ActionResult } from "@sveltejs/kit";
     import { boxSchema } from "@routes/settings/zod";

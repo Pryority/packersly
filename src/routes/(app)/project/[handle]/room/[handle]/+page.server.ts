@@ -19,6 +19,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
+  console.log("LOADING ROOM DATA");
 
   // console.log(url);
 
