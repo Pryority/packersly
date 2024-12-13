@@ -14,7 +14,6 @@ import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
 import QRCode from "qrcode";
-import type { Error } from "postgres";
 
 export const load: PageServerLoad = async ({ locals, url, params }) => {
   if (!locals.user) {
@@ -26,9 +25,9 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
   const urlPathname = url.pathname; // "/project/the-big-move"
   const pathSegments = urlPathname.split("/");
   const projectHandle = pathSegments[2]; // "the-big-move"
-  console.log("urlPathname", urlPathname);
-  console.log("pathSegments", pathSegments);
-  console.log("projectHandle", projectHandle);
+  // console.log("urlPathname", urlPathname);
+  // console.log("pathSegments", pathSegments);
+  // console.log("projectHandle", projectHandle);
 
   const PROJECT = await db.query.project.findFirst({
     where: and(
@@ -49,7 +48,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
     },
   });
 
-  console.log("Raw PROJECT query result:", PROJECT);
+  // console.log("Raw PROJECT query result:", PROJECT);
   // // console.log("ROOM boxes length:", ROOM?.boxes?.length);
   // // console.log("First box details:", ROOM?.boxes?.[0]);
 

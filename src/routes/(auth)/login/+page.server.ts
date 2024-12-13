@@ -46,7 +46,7 @@ export const actions: Actions = {
       const session = await auth.createSession(sessionToken, existingUser.id);
       auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 
-      console.log("Login successful, redirecting");
+      // console.log("Login successful, redirecting");
       throw redirect(303, "/dashboard");
     } catch (error) {
       if (error as Redirect) {

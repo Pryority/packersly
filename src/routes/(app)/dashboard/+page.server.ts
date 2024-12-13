@@ -42,12 +42,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions = {
   "create-project": async (event) => {
-    console.log("Action started");
     if (!event.locals.user) {
       throw error(401, "Unauthorized");
     }
     const form = await superValidate(event, zod(projectSchema));
-    console.log("Form data received:", form.data);
+    // console.log("Form data received:", form.data);
     if (!form.valid) {
       console.log("Form validation failed:", form.errors);
       return fail(400, { form });
@@ -56,7 +55,7 @@ export const actions = {
       const USER = await db.query.user.findFirst({
         where: eq(user.id, event.locals.user.id),
       });
-      console.log("User found:", USER);
+      // console.log("User found:", USER);
       if (!USER) {
         return fail(404, { message: "User not found" });
       }

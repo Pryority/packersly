@@ -22,23 +22,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   default: async (event) => {
-    console.log("Registration Request Origin:", {
-      origin: event.request.headers.get("origin"),
-      host: event.request.headers.get("host"),
-      referer: event.request.headers.get("referer"),
-      method: event.request.method,
-      url: event.url.href,
-    });
-
-    // Manually check origin if needed
-    const origin = event.request.headers.get("origin");
-    const host = event.request.headers.get("host");
-
-    console.log("Comparing:", {
-      expectedOrigin: `https://${host}`,
-      actualOrigin: origin,
-    });
-
     const form = await superValidate(event, zod(registerSchema));
     if (!form.valid) {
       return fail(400, { form });

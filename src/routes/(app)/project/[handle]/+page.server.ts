@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     },
   });
 
-  console.log("[Project Handle Page Server] Load Data:", { PROJECT });
+  // console.log("[Project Handle Page Server] Load Data:", { PROJECT });
 
   if (!PROJECT) {
     console.error("Project not found");
@@ -69,13 +69,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 export const actions = {
   "create-room": async ({ locals, request, params, url }) => {
-    console.log("Action started");
     if (!locals.user) {
       throw error(401, "Unauthorized");
     }
 
     const form = await superValidate(request, zod(roomSchema));
-    console.log("Form data received:", form.data);
+    // console.log("Form data received:", form.data);
     if (!form.valid) {
       console.log("Form validation failed:", form.errors);
       return fail(400, { form });

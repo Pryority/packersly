@@ -22,17 +22,17 @@ const csrfProtect: Handle = async ({ event, resolve }) => {
     const host = event.request.headers.get("host");
 
     // Debug logging
-    console.log("CSRF Check Details:", {
-      method,
-      contentType,
-      origin,
-      host,
-      path: event.url.pathname,
-      headers: {
-        "x-forwarded-proto": event.request.headers.get("x-forwarded-proto"),
-        "x-forwarded-host": event.request.headers.get("x-forwarded-host"),
-      },
-    });
+    // console.log("CSRF Check Details:", {
+    //   method,
+    //   contentType,
+    //   origin,
+    //   host,
+    //   path: event.url.pathname,
+    //   headers: {
+    //     "x-forwarded-proto": event.request.headers.get("x-forwarded-proto"),
+    //     "x-forwarded-host": event.request.headers.get("x-forwarded-host"),
+    //   },
+    // });
 
     // Check if this is a form submission that needs CSRF protection
     if (
@@ -48,10 +48,10 @@ const csrfProtect: Handle = async ({ event, resolve }) => {
       const originUrl = new URL(origin);
       const hostUrl = new URL(`https://${host}`); // Assume HTTPS for Railway
 
-      console.log("Comparing origins:", {
-        originHost: originUrl.host,
-        requestHost: hostUrl.host,
-      });
+      // console.log("Comparing origins:", {
+      //   originHost: originUrl.host,
+      //   requestHost: hostUrl.host,
+      // });
 
       if (originUrl.host !== hostUrl.host) {
         const message = `Cross-site ${method} form submissions are forbidden`;
