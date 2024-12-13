@@ -37,6 +37,8 @@
             return async ({ result }: { result: ActionResult }) => {
                 if (result.type === "error" || result.type === "failure") {
                     submitting = false;
+                    dialogOpen = false;
+                    sheetOpen = false;
                     cancel();
                 }
             };
@@ -46,8 +48,6 @@
         },
         onResult: () => {
             submitting = false;
-            dialogOpen = false;
-            sheetOpen = false;
         },
     });
 
