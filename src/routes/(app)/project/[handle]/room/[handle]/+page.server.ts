@@ -123,49 +123,52 @@ export const actions = {
           message: "Room not found",
         });
       }
-
       try {
+        // Precompute values before the transaction starts
         const boxId = crypto.randomUUID();
+        const accessToken = crypto.randomUUID();
+
+        console.log("Precomputed IDs:", { boxId, accessToken });
+
+        // Precompute box URL
+        const boxUrl = new URL(
+          `${url.origin}/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
+        );
+        boxUrl.searchParams.set("token", accessToken);
+
+        console.log("Precomputed Box URL:", boxUrl.toString());
+
+        // Generate QR code before the transaction
+        const qrCode = await Promise.race([
+          QRCode.toString(boxUrl.toString(), {
+            type: "svg",
+            margin: 1,
+            width: 256,
+            errorCorrectionLevel: "M",
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("QR Code generation timeout")),
+              5000,
+            ),
+          ),
+        ]);
+
+        console.log("Precomputed QR code generated");
+
+        // Start transaction with precomputed data
         const newBox = await db.transaction(async (tx) => {
           console.log("Transaction started", new Date().toISOString());
           try {
-            const accessToken = crypto.randomUUID();
-
-            console.log("Generated IDs:", { boxId, accessToken });
-
-            const boxUrl = new URL(
-              `${url.origin}/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
-            );
-            boxUrl.searchParams.set("token", accessToken);
-            console.log("Box URL created");
-
-            // Generate QR code with a timeout
-            const qrCode = await Promise.race([
-              QRCode.toString(boxUrl.toString(), {
-                type: "svg",
-                margin: 1,
-                width: 256,
-                errorCorrectionLevel: "M",
-              }),
-              new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error("QR Code generation timeout")),
-                  5000,
-                ),
-              ),
-            ]);
-            console.log("QR code generated");
-
-            // Create the box with explicit type
-            // Inside your transaction
+            // Insert the box into the database
             const result = await tx
               .insert(box)
               .values({
                 id: boxId,
                 roomId: ROOM.id,
-                qrCode: qrCode as string,
+                qrCode: qrCode as string, // Use precomputed QR code
                 notes: null,
-                accessToken: accessToken,
+                accessToken: accessToken, // Use precomputed accessToken
                 isPublic: false,
               } satisfies typeof box.$inferInsert)
               .returning();
@@ -175,81 +178,31 @@ export const actions = {
             const createdBox = result[0];
             if (!createdBox) throw new Error("Failed to create box");
 
+            // Insert items if they exist
             if (form.data.items?.length) {
-              try {
-                console.log(
-                  `Attempting to insert ${form.data.items.length} items`,
+              console.log(`Inserting ${form.data.items.length} items`);
+              const itemInsertPromises = form.data.items.map((itemData) =>
+                tx.insert(item).values({
+                  boxId: boxId,
+                  name: itemData.name,
+                  quantity: itemData.quantity,
+                } satisfies typeof item.$inferInsert),
+              );
+
+              const itemInsertResults =
+                await Promise.allSettled(itemInsertPromises);
+              const failedInserts = itemInsertResults.filter(
+                (result) => result.status === "rejected",
+              );
+
+              if (failedInserts.length > 0) {
+                console.error("Failed item inserts:", failedInserts);
+                throw new Error(
+                  `Failed to insert ${failedInserts.length} items`,
                 );
-                const itemInsertPromises = form.data.items.map(
-                  async (itemData) => {
-                    console.log(`Inserting item: ${JSON.stringify(itemData)}`);
-
-                    // Add more detailed logging and error handling
-                    try {
-                      const insertResult = await tx.insert(item).values({
-                        boxId: boxId,
-                        name: itemData.name,
-                        quantity: itemData.quantity,
-                      } satisfies typeof item.$inferInsert);
-
-                      console.log(
-                        `Item insert result: ${JSON.stringify(insertResult)}`,
-                      );
-                      return insertResult;
-                    } catch (specificItemError) {
-                      console.error("Specific item insert error:", {
-                        itemData,
-                        error: specificItemError,
-                        timestamp: new Date().toISOString(),
-                      });
-                      throw specificItemError;
-                    }
-                  },
-                );
-
-                const itemInsertResults =
-                  await Promise.allSettled(itemInsertPromises);
-
-                // Check for any failed promises
-                const failedInserts = itemInsertResults.filter(
-                  (result) => result.status === "rejected",
-                );
-
-                if (failedInserts.length > 0) {
-                  console.error("Some items failed to insert:", failedInserts);
-                  throw new Error(
-                    `Failed to insert ${failedInserts.length} items`,
-                  );
-                }
-
-                console.log(
-                  `Successfully inserted ${itemInsertResults.length} items`,
-                );
-              } catch (itemInsertError: any) {
-                console.error("Comprehensive item insert error:", {
-                  error: itemInsertError,
-                  name: itemInsertError.name,
-                  message: itemInsertError.message,
-                  stack: itemInsertError.stack,
-                  code: itemInsertError.code,
-                  timestamp: new Date().toISOString(),
-                });
-                throw itemInsertError;
               }
+              console.log("Items inserted successfully");
             }
-            // if (form.data.items?.length) {
-            //   await Promise.all(
-            //     form.data.items.map(
-            //       async (itemData) =>
-            //         await tx.insert(item).values({
-            //           boxId: boxId,
-            //           name: itemData.name,
-            //           quantity: itemData.quantity,
-            //         } satisfies typeof item.$inferInsert),
-            //     ),
-            //   );
-            //   console.log(`Created ${form.data.items.length} items for box`);
-            // }
 
             // Update room counts
             const itemCount =
@@ -271,19 +224,14 @@ export const actions = {
 
             return createdBox;
           } catch (innerError: any) {
-            console.error("Transaction inner error:", {
-              error: innerError,
-              name: innerError.name,
-              message: innerError.message,
-              stack: innerError.stack,
-              code: innerError.code,
-              timestamp: new Date().toISOString(),
-            });
+            console.error("Transaction inner error:", innerError);
             throw innerError;
           }
         });
 
-        console.log("Transaction completed successfully");
+        console.log("Transaction complete:", newBox);
+
+        // console.log("Transaction completed successfully");
 
         // Ensure redirect path is absolute and type safety
         if (!newBox?.id)
