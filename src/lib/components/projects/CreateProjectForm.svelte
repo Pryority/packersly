@@ -14,6 +14,7 @@
     } from "sveltekit-superforms";
     import Trash from "lucide-svelte/icons/trash";
     import { Separator } from "@components/ui/separator";
+    import PlusCircle from "lucide-svelte/icons/plus-circle";
 
     let {
         form,
@@ -59,7 +60,7 @@
                     <Input
                         bind:value={$formData.name}
                         {...attrs}
-                        placeholder="Enter a name for your move"
+                        placeholder="e.g. New Apartment"
                     />
                 </Form.Control>
                 <Form.Description
@@ -79,7 +80,7 @@
                     <Input
                         bind:value={$formData.fromAddress}
                         {...attrs}
-                        placeholder="Enter where you are moving from"
+                        placeholder="e.g. 20 Bremner Blvd."
                     />
                 </Form.Control>
                 <Form.Description
@@ -94,7 +95,7 @@
                     <Input
                         bind:value={$formData.toAddress}
                         {...attrs}
-                        placeholder="Enter where you are moving to"
+                        placeholder="e.g. 123 Main Street"
                     />
                 </Form.Control>
                 <Form.Description>The address you're moving to</Form.Description
@@ -102,85 +103,92 @@
                 <Form.FieldErrors class="max-md:text-xs" />
             </Form.Field>
 
-            <div class="space-y-2">
-                <Label>Rooms</Label>
+            <Separator />
+            <div class="flex flex-col items-center space-y-2 w-full">
+                <Label class="w-full text-lg">Rooms</Label>
                 {#each $formData.rooms as room, i}
                     <div
-                        class="flex flex-col md:flex-row gap-1 md:gap-2 items-center"
+                        class="flex flex-col md:flex-row md:items-end w-full md:space-x-4 space-y-4 md:space-y-0"
                     >
                         <Form.Field
                             {form}
                             name={`rooms.${i}.name` as FormPath<
                                 Infer<typeof projectSchema>
                             >}
+                            class="flex-1"
                         >
                             <Form.Control let:attrs>
                                 <div class="w-full">
                                     <Form.Label>Room {i + 1} Name</Form.Label>
                                     <Input
                                         bind:value={$formData.rooms[i].name}
-                                        placeholder="Room name"
+                                        placeholder="e.g. Kitchen"
                                         {...attrs}
                                     />
                                     <Form.FieldErrors class="max-md:text-xs" />
+                                    <Form.Description>
+                                        Give your room a name
+                                    </Form.Description>
                                 </div>
                             </Form.Control>
                         </Form.Field>
 
-                        <div class="space-y-4">
-                            <Form.Field
-                                {form}
-                                name={`rooms.${i}.colorCode` as FormPath<
-                                    Infer<typeof projectSchema>
-                                >}
-                            >
-                                <Form.Control let:attrs>
-                                    <div class="flex flex-col gap-1">
-                                        <Form.Label
-                                            class="max-md:text-xs whitespace-nowrap"
-                                            >Room Color</Form.Label
-                                        >
-                                        <Input
-                                            type="color"
-                                            bind:value={$formData.rooms[i]
-                                                .colorCode}
-                                            class="w-full h-9 p-0 cursor-pointer"
-                                            {...attrs}
-                                        />
-                                        <Form.FieldErrors
-                                            class="max-md:text-xs"
-                                        />
-                                        <Form.Description>
-                                            Organize your room with a color
-                                        </Form.Description>
-                                    </div>
-                                </Form.Control>
-                            </Form.Field>
+                        <Form.Field
+                            {form}
+                            name={`rooms.${i}.colorCode` as FormPath<
+                                Infer<typeof projectSchema>
+                            >}
+                            class="md:w-40"
+                        >
+                            <Form.Control let:attrs>
+                                <div>
+                                    <Form.Label
+                                        class="max-md:text-xs whitespace-nowrap"
+                                        >Room Color</Form.Label
+                                    >
+                                    <Input
+                                        type="color"
+                                        bind:value={$formData.rooms[i]
+                                            .colorCode}
+                                        class="w-full h-9 md:h-10 p-0 cursor-pointer"
+                                        {...attrs}
+                                    />
+                                    <Form.FieldErrors class="max-md:text-xs" />
+                                    <Form.Description>
+                                        Pick a room color
+                                    </Form.Description>
+                                </div>
+                            </Form.Control>
+                        </Form.Field>
 
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="destructive"
-                                on:click={() => removeRoom(i)}
-                                disabled={$formData.rooms.length === 1}
-                                class="md:col-span-1 w-full md:h-10 md:w-10 max-md:flex self-end mb-2 max-md:gap-2"
-                            >
-                                <span class="md:hidden"
-                                    >Delete Item {i + 1}</span
-                                >
-                                <Trash class="h-4 w-4 md:h-8 md:w-8" />
-                            </Button>
-                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            on:click={() => removeRoom(i)}
+                            disabled={$formData.rooms.length === 1}
+                            class="w-full md:w-10 h-10 flex items-center justify-center md:self-center"
+                        >
+                            <span class="md:hidden">Delete Room {i + 1}</span>
+                            <Trash class="h-4 w-4 md:h-5 md:w-5" />
+                        </Button>
                     </div>
-                    <Separator />
+                    <Separator class="my-4" />
                 {/each}
-                <Button type="button" variant="outline" on:click={addRoom}>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    class="flex items-center gap-2"
+                    on:click={addRoom}
+                >
                     Add Room
+                    <PlusCircle size={16} />
                 </Button>
             </div>
         </Card.Content>
 
-        <Card.Footer>
+        <Card.Footer class="justify-end">
             <Button type="submit" disabled={submitting}>
                 {submitting ? "Creating..." : "Create Project"}
             </Button>
