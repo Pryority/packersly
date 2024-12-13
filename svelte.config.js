@@ -11,7 +11,6 @@ const config = {
     adapter: adapter({
       dynamic_origin: true,
       precompress: true,
-      out: "build",
       envPrefix: "",
     }),
     env: {
