@@ -109,33 +109,7 @@ export const actions = {
       );
       boxUrl.searchParams.set("token", accessToken);
 
-      let qrCodeSvg: string;
-      try {
-        qrCodeSvg = (await Promise.race([
-          QRCode.toString(boxUrl.toString(), {
-            type: "svg",
-            margin: 1,
-            width: 256,
-            errorCorrectionLevel: "M",
-          }),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("QR code generation timeout")),
-              5000,
-            ),
-          ),
-        ])) as string;
-      } catch (qrError) {
-        console.error("QR Code generation failed:", qrError);
-        return fail(500, {
-          form,
-          message: "Failed to generate QR code for box",
-        });
-      }
-
-      // If QR code generation succeeded, proceed with database operations
       const newBox = await db.transaction(async (tx) => {
-        // Create box
         const [boxResult] = await tx
           .insert(box)
           .values({
@@ -148,16 +122,15 @@ export const actions = {
 
         if (!boxResult) throw new Error("Failed to create box");
 
-        // Create QR code
         const [qrResult] = await tx
           .insert(qrCode)
           .values({
             boxId,
-            code: qrCodeSvg,
+            url: boxUrl.toString(), // Store the URL string
           })
           .returning();
 
-        if (!qrResult) throw new Error("Failed to store QR code");
+        if (!qrResult) throw new Error("Failed to store QR code URL");
 
         // Create items if they exist
         if (form.data.items?.length) {

@@ -18,6 +18,8 @@
     import type { ActionResult } from "@sveltejs/kit";
     import { boxSchema } from "@routes/settings/zod";
     import { cn } from "@utils";
+    import QRCode from "qrcode";
+    import type { BoxWithRelations } from "@types";
 
     const {
         data,
@@ -60,12 +62,29 @@
     let dialogOpen = $state(false);
     let sheetOpen = $state(false);
     let submitting = $state(false);
+    let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
 
     function openForm() {
         const isMobile = window.innerWidth < 768;
         dialogOpen = !isMobile;
         sheetOpen = isMobile;
     }
+
+    $effect(() => {
+        if (data.room.boxes) {
+            data.room.boxes.forEach((box: BoxWithRelations) => {
+                if (box.qrCode?.url && qrCanvases[box.id]) {
+                    QRCode.toCanvas(qrCanvases[box.id], box.qrCode.url, {
+                        width: 256,
+                        margin: 0,
+                        errorCorrectionLevel: "M",
+                    }).catch((err) => {
+                        console.error("Error generating QR code:", err);
+                    });
+                }
+            });
+        }
+    });
 </script>
 
 <Card.Root class="m-4">
@@ -106,23 +125,18 @@
                                 goto(`${$page.url.pathname}/box/${box.id}`)}
                         >
                             <Table.Cell>
-                                {#if box.qrCode}
-                                    <div
-                                        class={cn(
-                                            "w-16 h-16 md:w-32 md:h-32 p-1 rounded-lg border-2 md:border-8",
-                                            `border-[data.room.colorCode]`,
-                                        )}
-                                    >
-                                        {#if box.qrCode?.code}
-                                            {@html box.qrCode.code.replace(
-                                                "<svg",
-                                                '<svg class="h-full w-full"',
-                                            )}
-                                        {/if}
-                                    </div>
-                                {/if}</Table.Cell
-                            >
-
+                                <div
+                                    class="flex justify-center items-center w-16 h-16 md:w-32 md:h-32 p-1 rounded-lg border-2 md:border-8"
+                                    style={`border-color: ${data.room.colorCode}`}
+                                >
+                                    {#if box.qrCode?.url}
+                                        <canvas
+                                            bind:this={qrCanvases[box.id]}
+                                            class="max-w-full max-h-full object-contain"
+                                        ></canvas>
+                                    {/if}
+                                </div>
+                            </Table.Cell>
                             <!-- <Table.Cell>
                                 <span class="text-center md:text-start">
                                     {data.room.boxes.length}

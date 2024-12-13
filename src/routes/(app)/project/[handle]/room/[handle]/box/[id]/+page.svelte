@@ -1,12 +1,10 @@
 <!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
     import { enhance } from "$app/forms";
-    import { goto, beforeNavigate } from "$app/navigation";
-    import Ellipsis from "lucide-svelte/icons/ellipsis";
     import Download from "lucide-svelte/icons/download";
     import { Button } from "@components/ui/button/index.js";
     import * as Card from "@components/ui/card/index.js";
-    import * as DropdownMenu from "@components/ui/dropdown-menu/index.js";
+    import QRCode from "qrcode";
     import * as Table from "@components/ui/table/index.js";
     import * as Form from "@components/ui/form";
     import type { Box } from "@db/schema/box";
@@ -87,12 +85,25 @@
 
     const { form: formData, errors } = form;
     let submitting = $state(false);
+    let qrCanvas = $state<HTMLCanvasElement>();
 
     $effect(() => {
-        if (box.qrCode?.code && (!$formData.qrCode || !$formData.colorCode)) {
+        if (box.qrCode?.url && qrCanvas) {
+            QRCode.toCanvas(qrCanvas, box.qrCode.url, {
+                width: 256,
+                margin: 0,
+                errorCorrectionLevel: "M",
+            }).catch((err) => {
+                console.error("Error generating QR code:", err);
+            });
+        }
+    });
+
+    $effect(() => {
+        if (box.qrCode?.url && (!$formData.qrCode || !$formData.colorCode)) {
             formData.update(($formData) => ({
                 ...$formData,
-                qrCode: box.qrCode.code,
+                qrCode: box.qrCode.url,
                 colorCode: data.box.room.colorCode,
             }));
         }
@@ -100,20 +111,22 @@
 </script>
 
 <Card.Root class="m-4">
-    <Card.Header>
-        <Card.Title>Box Details</Card.Title>
-        <Card.Description>View and manage items in this box.</Card.Description>
+    <Card.Header class="space-y-8">
+        <div class="flex flex-col gap-1">
+            <Card.Title>Box Details</Card.Title>
+            <Card.Description
+                >View and manage items in this box.</Card.Description
+            >
+        </div>
         {#if box.qrCode}
             <div class="mt-4 flex flex-col items-center gap-2">
                 <div
-                    class="w-64 h-64 p-4 rounded-lg"
+                    class="w-64 h-64 rounded-lg flex items-center justify-center"
                     style={`border: 8px solid ${box.room.colorCode}`}
                 >
-                    {#if box.qrCode?.code}
-                        {@html box.qrCode.code.replace(
-                            "<svg",
-                            '<svg class="h-full w-full"',
-                        )}
+                    {#if box.qrCode?.url}
+                        <canvas bind:this={qrCanvas} class="p-3 object-contain"
+                        ></canvas>
                     {/if}
                 </div>
                 <div class="flex flex-col items-center gap-2 mt-2">
@@ -209,7 +222,7 @@
         <Table.Root>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>Name</Table.Head>
+                    <Table.Head>Item</Table.Head>
                     <Table.Head>Quantity</Table.Head>
                     <!-- <Table.Head>
                         <span class="sr-only">Actions</span>

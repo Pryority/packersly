@@ -7,7 +7,7 @@ const qrCode = pgTable("qr_code", {
   boxId: uuid("box_id")
     .references(() => box.id, { onDelete: "cascade" })
     .unique(), // Makes this a one-to-one relationship
-  code: text("code").notNull(),
+  url: text("url").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
