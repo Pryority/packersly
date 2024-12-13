@@ -177,18 +177,53 @@ export const actions = {
             if (!createdBox) throw new Error("Failed to create box");
 
             if (form.data.items?.length) {
-              await Promise.all(
-                form.data.items.map(
-                  async (itemData) =>
-                    await tx.insert(item).values({
+              try {
+                console.log(
+                  `Attempting to insert ${form.data.items.length} items`,
+                );
+                const itemInsertPromises = form.data.items.map(
+                  async (itemData) => {
+                    console.log(`Inserting item: ${JSON.stringify(itemData)}`);
+                    const insertResult = await tx.insert(item).values({
                       boxId: boxId,
                       name: itemData.name,
                       quantity: itemData.quantity,
-                    } satisfies typeof item.$inferInsert),
-                ),
-              );
-              console.log(`Created ${form.data.items.length} items for box`);
+                    } satisfies typeof item.$inferInsert);
+                    console.log(
+                      `Item insert result: ${JSON.stringify(insertResult)}`,
+                    );
+                    return insertResult;
+                  },
+                );
+
+                const itemInsertResults = await Promise.all(itemInsertPromises);
+                console.log(
+                  `Successfully inserted ${itemInsertResults.length} items`,
+                );
+              } catch (itemInsertError: any) {
+                console.error("Error inserting items:", {
+                  error: itemInsertError,
+                  name: itemInsertError.name,
+                  message: itemInsertError.message,
+                  stack: itemInsertError.stack,
+                  code: itemInsertError.code,
+                });
+                throw itemInsertError; // Rethrow to trigger transaction rollback
+              }
             }
+            // if (form.data.items?.length) {
+            //   await Promise.all(
+            //     form.data.items.map(
+            //       async (itemData) =>
+            //         await tx.insert(item).values({
+            //           boxId: boxId,
+            //           name: itemData.name,
+            //           quantity: itemData.quantity,
+            //         } satisfies typeof item.$inferInsert),
+            //     ),
+            //   );
+            //   console.log(`Created ${form.data.items.length} items for box`);
+            // }
 
             // Update room counts
             const itemCount =
