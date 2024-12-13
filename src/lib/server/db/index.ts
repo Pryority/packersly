@@ -13,9 +13,11 @@ const connectionConfig = {
   max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 10,
   onnotice: env.DB_SEEDING ? () => {} : undefined,
   ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  idle_timeout: 20,
-  connect_timeout: 20,
+  idle_timeout: 60, // Increased from 20 to 60 seconds
+  connect_timeout: 30, // Increased from 20 to 30 seconds
   keepalive: true,
+  max_lifetime: 60 * 30, // Maximum connection lifetime (30 minutes)
+  statement_timeout: 10 * 1000, // 10 seconds timeout for individual statements
 };
 
 export const connection = postgres(env.DATABASE_URL, connectionConfig);
