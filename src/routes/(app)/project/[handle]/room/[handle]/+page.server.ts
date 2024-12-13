@@ -40,6 +40,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
         with: {
           boxes: {
             with: {
+              qrCode: true,
               items: true,
             },
           },

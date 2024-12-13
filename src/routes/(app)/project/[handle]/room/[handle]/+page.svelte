@@ -37,16 +37,22 @@
             return async ({ result }: { result: ActionResult }) => {
                 if (result.type === "error" || result.type === "failure") {
                     submitting = false;
+                    cancel();
+                    // Don't close modals on error so user can fix input
+                } else {
+                    // Close modals only on success/redirect
                     dialogOpen = false;
                     sheetOpen = false;
-                    cancel();
+                    submitting = false;
                 }
             };
         },
         onError: () => {
+            // Just reset submitting state, keep modals open
             submitting = false;
         },
-        onResult: () => {
+        onResult: ({ result }) => {
+            // Only close modals if it's a successful result
             submitting = false;
         },
     });
@@ -85,8 +91,7 @@
                         <Table.Head>QR Code</Table.Head>
                         <!-- <Table.Head class="max-md:text-center">Boxes</Table.Head -->
 
-                        <Table.Head class="max-md:text-center">Items</Table.Head
-                        >
+                        <Table.Head>Items</Table.Head>
                         <!-- <Table.Head>Contents</Table.Head> -->
                         <!-- <Table.Head>Notes</Table.Head> -->
                         <!-- <Table.Head>
@@ -102,11 +107,16 @@
                         >
                             <Table.Cell>
                                 {#if box.qrCode}
-                                    <div class="w-16 h-16 md:w-32 md:h-32">
-                                        {@html box.qrCode.replace(
-                                            "<svg",
-                                            '<svg class="h-full w-full"',
-                                        )}
+                                    <div
+                                        class="w-16 h-16 md:w-32 md:h-32 p-1 rounded-lg"
+                                        style={`border: 2px solid ${data.room.colorCode}`}
+                                    >
+                                        {#if box.qrCode?.code}
+                                            {@html box.qrCode.code.replace(
+                                                "<svg",
+                                                '<svg class="h-full w-full"',
+                                            )}
+                                        {/if}
                                     </div>
                                 {/if}</Table.Cell
                             >
