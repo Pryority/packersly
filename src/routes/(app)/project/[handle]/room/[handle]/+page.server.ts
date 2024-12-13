@@ -96,12 +96,37 @@ export const actions = {
       if (!ROOM) {
         return fail(404, { form, message: "Room not found" });
       }
+      // Prepare all the data we need before starting transaction
       const boxId = crypto.randomUUID();
       const accessToken = crypto.randomUUID();
 
-      const [boxResult, qrResult] = await db.transaction(async (tx) => {
-        // 1. Create box using tx
-        const [box] = await tx
+      // Generate QR code before transaction
+      const boxUrl = new URL(
+        `/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
+        `https://${url.host}`,
+      );
+      boxUrl.searchParams.set("token", accessToken);
+
+      const qrCodeSvg = await Promise.race([
+        QRCode.toString(boxUrl.toString(), {
+          type: "svg",
+          margin: 1,
+          width: 256,
+          errorCorrectionLevel: "M",
+        }),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("QR code generation timeout")),
+            5000,
+          ),
+        ),
+      ]);
+
+      // If we get here, QR code generation succeeded
+      // Now do all DB operations in a single transaction
+      const [box, qr] = await db.transaction(async (tx) => {
+        // Insert box and get result
+        const [boxResult] = await tx
           .insert(boxTable)
           .values({
             id: boxId,
@@ -111,51 +136,12 @@ export const actions = {
           })
           .returning();
 
-        if (!box) {
+        if (!boxResult) {
           throw new Error("Failed to create box");
         }
 
-        // 2. Create items if they exist using tx
-        if (form.data.items?.length) {
-          const CHUNK_SIZE = 100;
-          for (let i = 0; i < form.data.items.length; i += CHUNK_SIZE) {
-            const itemChunk = form.data.items.slice(i, i + CHUNK_SIZE);
-            await tx.insert(item).values(
-              itemChunk.map((itemData) => ({
-                id: crypto.randomUUID(),
-                boxId,
-                name: itemData.name,
-                quantity: itemData.quantity,
-              })),
-            );
-          }
-        }
-
-        // 3. Generate QR code URL
-        const boxUrl = new URL(
-          `/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
-          `https://${url.host}`,
-        );
-        boxUrl.searchParams.set("token", accessToken);
-
-        // 4. Generate QR code
-        const qrCodeSvg = await Promise.race([
-          QRCode.toString(boxUrl.toString(), {
-            type: "svg",
-            margin: 1,
-            width: 256,
-            errorCorrectionLevel: "M",
-          }),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("QR code generation timeout")),
-              5000,
-            ),
-          ),
-        ]);
-
-        // 5. Store QR code using tx
-        const [qr] = await tx
+        // Insert QR code
+        const [qrResult] = await tx
           .insert(qrCode)
           .values({
             boxId,
@@ -163,14 +149,26 @@ export const actions = {
           })
           .returning();
 
-        if (!qr) {
+        if (!qrResult) {
           throw new Error("Failed to create QR code");
         }
 
-        return [box, qr];
+        // Insert items if they exist
+        if (form.data.items?.length) {
+          await tx.insert(item).values(
+            form.data.items.map((itemData) => ({
+              id: crypto.randomUUID(),
+              boxId,
+              name: itemData.name,
+              quantity: itemData.quantity,
+            })),
+          );
+        }
+
+        return [boxResult, qrResult];
       });
 
-      if (!boxResult || !qrResult) {
+      if (!box || !qr) {
         throw new Error("Failed to create box or QR code");
       }
 
