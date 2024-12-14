@@ -10,20 +10,27 @@ const myEnv = config({ path: ".env" });
 expand(myEnv);
 
 const connectionConfig = {
-  // max: env.DB_MIGRATING || env.DB_SEEDING ? 1 : 10,
   max: env.NODE_ENV === "production" ? 50 : 10,
-  onnotice: env.DB_SEEDING ? () => {} : undefined,
   ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  idle_timeout: 60, // Increased from 20 to 60 seconds
-  connect_timeout: 30, // Increased from 20 to 30 seconds
-  keepalive: true,
-  max_lifetime: 60 * 30, // Maximum connection lifetime (30 minutes)
-  statement_timeout: 10 * 1000, // 10 seconds timeout for individual statements
-  onconnect: () => {
-    console.log("Database connection established");
+  // Reduce timeouts to catch issues faster
+  idle_timeout: 20, // Reduced from 60
+  connect_timeout: 10, // Reduced from 30
+  keepalive: 1000 * 30, // Explicit keepalive every 30 seconds
+  max_lifetime: 60 * 10, // Reduced from 30 minutes to 10
+  statement_timeout: 5 * 1000, // Reduced from 10 seconds to 5
+
+  // Add more detailed error reporting
+  onnotice: (notice: any) => {
+    console.log("DB Notice:", notice);
   },
-  onclose: () => {
-    console.log("Database connection closed");
+  onconnect: () => {
+    console.log("Database connection established", new Date().toISOString());
+  },
+  onclose: (error: any) => {
+    console.log("Database connection closed", {
+      error,
+      timestamp: new Date().toISOString(),
+    });
   },
 };
 
