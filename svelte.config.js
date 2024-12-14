@@ -13,13 +13,6 @@ const config = {
       precompress: true,
       envPrefix: "",
     }),
-    handleError: ({ error, event }) => {
-      console.error("SvelteKit error:", {
-        error,
-        url: event?.url?.pathname,
-        timestamp: new Date().toISOString(),
-      });
-    },
     csrf: { checkOrigin: false },
     env: {
       dir: ".",
