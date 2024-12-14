@@ -16,7 +16,7 @@ function createDb() {
   const connectionConfig = {
     max: 100,
     min: 2,
-    keepalive: true,
+    keep_alive: 30000,
     ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     idle_timeout: 30,
     connect_timeout: 10,
