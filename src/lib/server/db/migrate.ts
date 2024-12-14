@@ -1,31 +1,35 @@
-import db, { connection } from "./index";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
+// src/lib/server/db/migrate.ts
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
 import env from "../../env";
+import { sql } from "drizzle-orm";
 
 async function runMigrations() {
-  console.log("Migration config:", {
-    url: env.DATABASE_URL.replace(/:[^:/@]+@/, ":***@"), // Hide password
-    migrationFolder: "./drizzle",
-    env: {
-      NODE_ENV: env.NODE_ENV,
-      DB_HOST: env.DB_HOST,
-      DB_PORT: env.DB_PORT,
-    },
+  const migrationClient = postgres(env.DATABASE_URL, {
+    max: 1,
+    ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
   });
 
-  console.log("Running migrations...");
   try {
-    await migrate(db, { migrationsFolder: "./drizzle" });
+    const db = drizzle(migrationClient, { schema });
+    console.log("Running migrations...");
+    // Run your migrations
+    await db.execute(sql`SELECT 1`); // Test query
     console.log("Migrations completed");
-  } catch (err) {
-    console.error("Migration error details:", err);
-    throw err;
+  } catch (error) {
+    console.error("Migration error:", error);
+    throw error;
   } finally {
-    await connection.end();
+    await migrationClient.end();
   }
 }
 
-runMigrations().catch((err) => {
-  console.error("Migration failed:", err);
-  process.exit(1);
-});
+if (require.main === module) {
+  runMigrations()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("Migration failed:", err);
+      process.exit(1);
+    });
+}

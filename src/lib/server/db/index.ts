@@ -9,50 +9,75 @@ import { expand } from "dotenv-expand";
 const myEnv = config({ path: ".env" });
 expand(myEnv);
 
-const connectionConfig = {
-  // max: env.NODE_ENV === "production" ? 50 : 10,
-  max: 20, // Reduce from 50 to see if it helps stability
-  min: 2, // Add a minimum to keep some connections warm
-  keepalive: true,
-  ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  // Reduce timeouts to catch issues faster
-  idle_timeout: 20, // Reduced from 60
-  connect_timeout: 10, // Reduced from 30
-  // keepalive: 1000 * 30, // Explicit keepalive every 30 seconds
-  max_lifetime: 60 * 10, // Reduced from 30 minutes to 10
-  statement_timeout: 5 * 1000, // Reduced from 10 seconds to 5
+// Create a singleton for the database connection
+let db: ReturnType<typeof createDb> | null = null;
 
-  // Add more detailed error reporting
-  onnotice: (notice: any) => {
-    console.log("DB Notice:", notice);
-  },
-  onconnect: () => {
-    console.log("Database connection established", new Date().toISOString());
-  },
-  onclose: (error: any) => {
-    console.log("Database connection closed", {
-      error,
-      timestamp: new Date().toISOString(),
-    });
-  },
-};
+function createDb() {
+  const connectionConfig = {
+    max: 20,
+    min: 2,
+    keepalive: true,
+    ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    idle_timeout: 30,
+    connect_timeout: 10,
+    max_lifetime: 60 * 30, // 30 minutes
+    statement_timeout: 10 * 1000,
+    onnotice: (notice: any) => {
+      console.log("DB Notice:", notice);
+    },
+    onconnect: () => {
+      console.log("Database connection established", new Date().toISOString());
+    },
+    onclose: (error: any) => {
+      console.log("Database connection closed", {
+        error,
+        timestamp: new Date().toISOString(),
+      });
+      // Reset the connection so it can be recreated
+      db = null;
+    },
+  };
 
-export const connection = postgres(env.DATABASE_URL, connectionConfig);
+  const sql = postgres(env.DATABASE_URL, connectionConfig);
 
-const db = drizzle(connection, {
-  schema,
-  logger:
-    env.NODE_ENV === "development"
-      ? {
-          logQuery: (query, params) => {
-            // console.log("DB Query:", {
-            //   query,
-            //   params,
-            //   timestamp: new Date().toISOString(),
-            // });
-          },
-        }
-      : false,
+  return drizzle(sql, {
+    schema,
+    logger:
+      env.NODE_ENV === "development"
+        ? {
+            logQuery: (query, params) => {
+              console.log("DB Query:", {
+                query,
+                params,
+                timestamp: new Date().toISOString(),
+              });
+            },
+          }
+        : false,
+  });
+}
+
+// Function to get database instance
+function getDb() {
+  if (!db) {
+    db = createDb();
+    console.log("Created new database connection", new Date().toISOString());
+  }
+  return db;
+}
+
+// Graceful shutdown handler
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received. Closing database connections...");
+  if (db) {
+    try {
+      await (db as any)?.end();
+      console.log("Database connections closed.");
+    } catch (err) {
+      console.error("Error closing database connections:", err);
+    }
+  }
+  process.exit(0);
 });
 
 // Global error handler for unhandled promises
@@ -60,5 +85,6 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
-export type DB = typeof db;
-export default db;
+// Export a function that always returns the current database instance
+export default getDb();
+export type DB = ReturnType<typeof createDb>;
