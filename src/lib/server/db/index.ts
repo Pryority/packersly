@@ -22,6 +22,11 @@ function createDb() {
     connect_timeout: 10,
     max_lifetime: 60 * 30, // 30 minutes
     statement_timeout: 10 * 1000,
+    host: env.DB_HOST,
+    username: env.DB_USER,
+    password: env.DB_PASSWORD,
+    database: env.DB_NAME,
+    port: env.DB_PORT,
     onnotice: (notice: any) => {
       console.log("DB Notice:", notice);
     },
