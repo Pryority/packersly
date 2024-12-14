@@ -241,7 +241,7 @@
 </Dialog.Root>
 
 <Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
-    <Sheet.Content side="bottom" class="md:hidden max-h-[90vh] overflow-y-auto">
+    <Sheet.Content side="bottom" class="md:hidden max-h-[80vh] overflow-y-auto">
         <Sheet.Header class="mb-4">
             <Sheet.Title>Add a Box to Room</Sheet.Title>
             <Sheet.Description class="flex flex-col gap-4 text-xs">
