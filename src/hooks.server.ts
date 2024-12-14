@@ -17,69 +17,49 @@ const isFormContentType = (request: Request) => {
 const csrfProtect: Handle = async ({ event, resolve }) => {
   try {
     const method = event.request.method;
-    const contentType = event.request.headers.get("content-type");
+
+    // Skip CSRF check for non-mutating methods
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      return resolve(event);
+    }
+
+    // Skip CSRF check for non-form content
+    if (!isFormContentType(event.request)) {
+      return resolve(event);
+    }
+
     const origin = event.request.headers.get("origin");
+    if (!origin) {
+      return resolve(event);
+    }
+
     const host = event.request.headers.get("host");
+    if (!host) {
+      console.warn("No host header found in request");
+      return resolve(event);
+    }
 
-    // Debug logging
-    // console.log("CSRF Check Details:", {
-    //   method,
-    //   contentType,
-    //   origin,
-    //   host,
-    //   path: event.url.pathname,
-    //   headers: {
-    //     "x-forwarded-proto": event.request.headers.get("x-forwarded-proto"),
-    //     "x-forwarded-host": event.request.headers.get("x-forwarded-host"),
-    //   },
-    // });
-
-    // Check if this is a form submission that needs CSRF protection
-    if (
-      ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
-      isFormContentType(event.request)
-    ) {
-      // If there's no origin header, allow the request (same-origin requests)
-      if (!origin) {
-        return resolve(event);
-      }
-
-      // If there is an origin, check if it matches
+    try {
       const originUrl = new URL(origin);
-      const hostUrl = new URL(`https://${host}`); // Assume HTTPS for Railway
-
-      // console.log("Comparing origins:", {
-      //   originHost: originUrl.host,
-      //   requestHost: hostUrl.host,
-      // });
+      const hostUrl = new URL(`https://${host}`);
 
       if (originUrl.host !== hostUrl.host) {
-        const message = `Cross-site ${method} form submissions are forbidden`;
-        if (event.request.headers.get("accept") === "application/json") {
-          return new Response(JSON.stringify({ message }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        return new Response(message, { status: 403 });
+        console.warn("CSRF check failed:", {
+          originHost: originUrl.host,
+          requestHost: hostUrl.host,
+          path: event.url.pathname,
+        });
+        return new Response("Forbidden", { status: 403 });
       }
+    } catch (urlError) {
+      console.error("Error parsing URLs for CSRF check:", urlError);
+      return resolve(event); // Continue on URL parsing error
     }
 
     return resolve(event);
   } catch (error) {
     console.error("CSRF Protection Error:", error);
-
-    // Return a JSON error response
-    return new Response(
-      JSON.stringify({
-        message: "Error processing request",
-        details: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      },
-    );
+    return resolve(event); // Continue on error rather than failing
   }
 };
 
