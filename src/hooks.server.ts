@@ -65,26 +65,36 @@ const csrfProtect: Handle = async ({ event, resolve }) => {
 
 // Your existing auth handler
 const handleAuth: Handle = async ({ event, resolve }) => {
-  const sessionToken = event.cookies.get(auth.sessionCookieName);
-  if (!sessionToken) {
-    console.log("No session token found");
-    event.locals.user = null;
-    event.locals.session = null;
+  try {
+    const sessionToken = event.cookies.get(auth.sessionCookieName);
+    if (!sessionToken) {
+      event.locals.user = null;
+      event.locals.session = null;
+      return resolve(event);
+    }
+
+    try {
+      const { session, user } = await auth.validateSessionToken(sessionToken);
+      if (session) {
+        auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+      } else {
+        auth.deleteSessionTokenCookie(event);
+      }
+      event.locals.user = user;
+      event.locals.session = session;
+    } catch (authError) {
+      console.error("Auth validation error:", authError);
+      event.locals.user = null;
+      event.locals.session = null;
+      auth.deleteSessionTokenCookie(event);
+    }
+
+    return resolve(event);
+  } catch (error) {
+    console.error("Hook error:", error);
+    // Don't let hook errors crash the application
     return resolve(event);
   }
-
-  const { session, user } = await auth.validateSessionToken(sessionToken);
-  if (session) {
-    console.log("Valid session found for user:", user?.username);
-    auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
-  } else {
-    console.log("Invalid session, clearing cookie");
-    auth.deleteSessionTokenCookie(event);
-  }
-  event.locals.user = user;
-  event.locals.session = session;
-
-  return resolve(event);
 };
 
 export const handle = sequence(csrfProtect, handleAuth);
