@@ -10,12 +10,15 @@ const myEnv = config({ path: ".env" });
 expand(myEnv);
 
 const connectionConfig = {
-  max: env.NODE_ENV === "production" ? 50 : 10,
+  // max: env.NODE_ENV === "production" ? 50 : 10,
+  max: 20, // Reduce from 50 to see if it helps stability
+  min: 2, // Add a minimum to keep some connections warm
+  keepalive: true,
   ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
   // Reduce timeouts to catch issues faster
   idle_timeout: 20, // Reduced from 60
   connect_timeout: 10, // Reduced from 30
-  keepalive: 1000 * 30, // Explicit keepalive every 30 seconds
+  // keepalive: 1000 * 30, // Explicit keepalive every 30 seconds
   max_lifetime: 60 * 10, // Reduced from 30 minutes to 10
   statement_timeout: 5 * 1000, // Reduced from 10 seconds to 5
 
