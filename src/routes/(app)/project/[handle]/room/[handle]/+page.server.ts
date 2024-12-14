@@ -83,69 +83,69 @@ export const actions = {
     }
 
     try {
-      const PROJECT = await db.query.project.findFirst({
-        where: eq(project.handle, projectHandle),
-        columns: { id: true, userId: true },
-      });
+      // Combine project and room lookup into a single query
+      const [result] = await db
+        .select({
+          project: { id: project.id },
+          room: { id: room.id, handle: room.handle },
+        })
+        .from(project)
+        .innerJoin(
+          room,
+          and(eq(room.projectId, project.id), eq(room.handle, roomHandle)),
+        )
+        .where(
+          and(
+            eq(project.handle, projectHandle),
+            eq(project.userId, locals.user.id),
+          ),
+        )
+        .limit(1);
 
-      if (!PROJECT || PROJECT.userId !== locals.user.id) {
-        return fail(403, { form, message: "Project access denied" });
-      }
-
-      const ROOM = await db.query.room.findFirst({
-        where: and(eq(room.handle, roomHandle), eq(room.projectId, PROJECT.id)),
-      });
-
-      if (!ROOM) {
-        return fail(404, { form, message: "Room not found" });
+      if (!result) {
+        return fail(404, { form, message: "Project or room not found" });
       }
 
       const boxId = crypto.randomUUID();
       const accessToken = crypto.randomUUID();
 
-      // Generate QR code first
+      // Pre-generate QR code URL
       const boxUrl = new URL(
-        `/project/${projectHandle}/room/${ROOM.handle}/box/${boxId}`,
+        `/project/${projectHandle}/room/${result.room.handle}/box/${boxId}`,
         `https://${url.host}`,
       );
       boxUrl.searchParams.set("token", accessToken);
 
-      const newBox = await db.transaction(async (tx) => {
-        const [boxResult] = await tx
-          .insert(box)
-          .values({
-            id: boxId,
-            roomId: ROOM.id,
-            accessToken,
-            isPublic: false,
-          })
-          .returning();
+      // Prepare all insert values outside the transaction
+      const boxValues = {
+        id: boxId,
+        roomId: result.room.id,
+        accessToken,
+        isPublic: false,
+      };
 
-        if (!boxResult) throw new Error("Failed to create box");
+      const qrValues = {
+        boxId,
+        url: boxUrl.toString(),
+      };
 
-        const [qrResult] = await tx
-          .insert(qrCode)
-          .values({
-            boxId,
-            url: boxUrl.toString(), // Store the URL string
-          })
-          .returning();
+      const itemValues =
+        form.data.items?.map((itemData) => ({
+          id: crypto.randomUUID(),
+          boxId,
+          name: itemData.name,
+          quantity: itemData.quantity,
+        })) ?? [];
 
-        if (!qrResult) throw new Error("Failed to store QR code URL");
-
-        // Create items if they exist
-        if (form.data.items?.length) {
-          await tx.insert(item).values(
-            form.data.items.map((itemData) => ({
-              id: crypto.randomUUID(),
-              boxId,
-              name: itemData.name,
-              quantity: itemData.quantity,
-            })),
-          );
-        }
-
-        return boxResult;
+      // Single transaction with all inserts
+      await db.transaction(async (tx) => {
+        await Promise.all([
+          tx.insert(box).values(boxValues),
+          tx.insert(qrCode).values(qrValues),
+          itemValues.length > 0
+            ? tx.insert(item).values(itemValues)
+            : Promise.resolve(),
+        ]);
       });
 
       throw redirect(303, `${url.pathname}/box/${boxId}`);
@@ -155,12 +155,13 @@ export const actions = {
       console.error("Box Creation error:", {
         error,
         message: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
       });
 
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (errorMessage.toLowerCase().includes("duplicate key")) {
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes("duplicate key")
+      ) {
         return fail(409, {
           form,
           message: "A box with this access token already exists",

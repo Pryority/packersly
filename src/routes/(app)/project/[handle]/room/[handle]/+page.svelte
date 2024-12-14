@@ -34,27 +34,26 @@
         validators: zodClient(boxSchema),
         dataType: "json",
         taintedMessage: null,
+        timeoutMs: 8000, // Add timeout
         onSubmit: ({ cancel }) => {
             submitting = true;
             return async ({ result }: { result: ActionResult }) => {
-                if (result.type === "error" || result.type === "failure") {
+                try {
+                    if (result.type === "error" || result.type === "failure") {
+                        submitting = false;
+                        cancel();
+                    } else {
+                        dialogOpen = false;
+                        sheetOpen = false;
+                        submitting = false;
+                    }
+                } catch (error) {
                     submitting = false;
                     cancel();
-                    // Don't close modals on error so user can fix input
-                } else {
-                    // Close modals only on success/redirect
-                    dialogOpen = false;
-                    sheetOpen = false;
-                    submitting = false;
                 }
             };
         },
         onError: () => {
-            // Just reset submitting state, keep modals open
-            submitting = false;
-        },
-        onResult: ({ result }) => {
-            // Only close modals if it's a successful result
             submitting = false;
         },
     });
