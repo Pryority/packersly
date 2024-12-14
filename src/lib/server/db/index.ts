@@ -14,7 +14,7 @@ let db: ReturnType<typeof createDb> | null = null;
 
 function createDb() {
   const connectionConfig = {
-    max: 20,
+    max: 100,
     min: 2,
     keepalive: true,
     ssl: env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,

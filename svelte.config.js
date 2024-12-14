@@ -9,9 +9,8 @@ const config = {
 
   kit: {
     adapter: adapter({
-      dynamic_origin: true,
+      // dynamic_origin: true,
       precompress: true,
-      envPrefix: "",
     }),
     csrf: { checkOrigin: false },
     env: {
