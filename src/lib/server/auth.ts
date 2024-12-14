@@ -68,7 +68,19 @@ export type SessionValidationResult = Awaited<
 >;
 
 export async function invalidateSession(sessionId: string) {
-  await db.delete(table.session).where(eq(table.session.id, sessionId));
+  try {
+    const result = await db
+      .delete(table.session)
+      .where(eq(table.session.id, sessionId))
+      .returning({ id: table.session.id });
+
+    console.log("Session deletion result:", result);
+
+    return result.length > 0;
+  } catch (error) {
+    console.error("Error invalidating session:", error);
+    throw error; // Let the caller handle the error
+  }
 }
 
 export function setSessionTokenCookie(
