@@ -28,38 +28,41 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
   // console.log("urlPathname", urlPathname);
   // console.log("pathSegments", pathSegments);
   // console.log("projectHandle", projectHandle);
-  //
 
-  const PROJECT = await db.query.project.findFirst({
+  // Get just the room we need with its boxes
+  const ROOM = await db.query.room.findFirst({
     where: and(
-      eq(project.handle, projectHandle),
-      eq(project.userId, locals.user.id),
+      eq(room.handle, params.handle),
+      eq(
+        room.projectId,
+        db
+          .select({ id: project.id })
+          .from(project)
+          .where(
+            and(
+              eq(project.handle, projectHandle),
+              eq(project.userId, locals.user.id),
+            ),
+          )
+          .limit(1),
+      ),
     ),
     with: {
-      rooms: {
+      boxes: {
         with: {
-          boxes: {
-            with: {
-              qrCode: true,
-              items: true,
-            },
-          },
+          qrCode: true,
+          items: true,
         },
       },
     },
   });
 
-  // console.log("Raw PROJECT query result:", PROJECT);
-  // // console.log("ROOM boxes length:", ROOM?.boxes?.length);
-  // // console.log("First box details:", ROOM?.boxes?.[0]);
-
-  if (!PROJECT) {
-    throw redirect(302, "/dashboard"); // or handle the "room not found" case
+  if (!room) {
+    throw redirect(302, "/dashboard");
   }
 
   return {
-    // room: ROOM,
-    room: PROJECT.rooms.find((r) => r.handle === params.handle),
+    room: ROOM,
     form: await superValidate(zod(boxSchema)),
   };
 };
