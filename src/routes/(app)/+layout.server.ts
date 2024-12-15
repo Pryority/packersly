@@ -1,9 +1,9 @@
 // src/routes/+layout.server.ts
-import db from "@db";
 import type { LayoutServerLoad } from "./$types";
 import { user } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
+import db from "@db";
 
 // Define public routes that don't require authentication
 const publicRoutes = ["/login", "/register"];

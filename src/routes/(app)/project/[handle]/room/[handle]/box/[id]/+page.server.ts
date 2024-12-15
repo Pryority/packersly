@@ -1,19 +1,18 @@
 // src/routes/project/[handle]/room/[handle]/box/[id]/+page.server.ts
 import { error, redirect, fail, type Actions } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import db from "@db";
 import { box } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { downloadQrSchema } from "@routes/settings/zod";
 import { zod } from "sveltekit-superforms/adapters";
 import { superValidate } from "sveltekit-superforms";
+import db from "@db";
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
   console.log("LOADING BOX DATA");
-
   // First, get the box with its relationships
   const BOX = await db.query.box.findFirst({
     where: eq(box.id, params.id),

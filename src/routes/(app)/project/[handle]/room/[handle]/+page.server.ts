@@ -7,13 +7,12 @@ import {
   type Redirect,
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import db from "@db";
 import { box, item, project, room, qrCode } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
-import QRCode from "qrcode";
+import db from "@db";
 
 export const load: PageServerLoad = async ({ locals, url, params }) => {
   if (!locals.user) {
@@ -29,6 +28,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
   // console.log("urlPathname", urlPathname);
   // console.log("pathSegments", pathSegments);
   // console.log("projectHandle", projectHandle);
+  //
 
   const PROJECT = await db.query.project.findFirst({
     where: and(

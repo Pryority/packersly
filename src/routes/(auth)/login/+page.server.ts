@@ -1,4 +1,3 @@
-import db from "@db";
 import { user } from "@db/schema";
 import { verify } from "argon2";
 import * as auth from "@server/auth";
@@ -8,6 +7,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { loginSchema } from "@routes/settings/zod";
+import db from "@db";
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {

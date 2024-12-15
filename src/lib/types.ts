@@ -23,3 +23,16 @@ export type BoxWithRelations = Box & {
 export type RoomWithRelations = InferSelectModel<typeof room> & {
   boxes: BoxWithRelations[]; // An array of boxes with optional items
 };
+
+// Type for the basic project info that loads immediately
+export type ProjectBasic = {
+  id: string;
+  name: string;
+  fromAddress: string;
+  toAddress: string;
+};
+
+// Type for the streamed data
+export type StreamedData = {
+  rooms: Promise<RoomWithRelations[]>;
+};

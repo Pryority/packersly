@@ -2,9 +2,9 @@ import type { RequestEvent } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase64url, encodeHexLowerCase } from "@oslojs/encoding";
-import db from "@db";
 import * as table from "@db/schema";
 import type { Session } from "@db/schema/session";
+import db from "@db";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 

@@ -1,6 +1,6 @@
 // src/routes/health/+server.ts
-import { json } from "@sveltejs/kit";
 import db from "@db";
+import { json } from "@sveltejs/kit";
 import { sql } from "drizzle-orm";
 
 export async function GET() {

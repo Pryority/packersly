@@ -2,7 +2,6 @@
 import { fail, redirect, type Redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { hash } from "argon2";
-import db from "@db";
 import { user } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
@@ -10,6 +9,7 @@ import * as auth from "@server/auth";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { registerSchema } from "@routes/settings/zod";
+import db from "@db";
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
@@ -26,7 +26,7 @@ export const actions: Actions = {
     if (!form.valid) {
       return fail(400, { form });
     }
-
+    console.log("server action db", db);
     try {
       const existingUser = await db.query.user.findFirst({
         where: eq(user.email, form.data.email),
@@ -54,7 +54,7 @@ export const actions: Actions = {
           userType: "client",
         })
         .returning();
-
+      console.log("USER", USER);
       if (user) {
         const sessionToken = auth.generateSessionToken();
         const session = await auth.createSession(sessionToken, userId);

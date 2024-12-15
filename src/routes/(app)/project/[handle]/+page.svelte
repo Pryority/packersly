@@ -18,7 +18,12 @@
     } from "sveltekit-superforms";
     import { zodClient } from "sveltekit-superforms/adapters";
     import { goto } from "$app/navigation";
-    import type { ProjectData } from "@types";
+    import type {
+        ProjectBasic,
+        ProjectData,
+        RoomWithRelations,
+        StreamedData,
+    } from "@types";
     import { cn, getTotalItemsOfBoxes } from "@utils";
     import type { ActionResult } from "@sveltejs/kit";
     import UpdateProjectDialog from "@components/projects/UpdateProjectDialog.svelte";
@@ -31,12 +36,21 @@
         data,
     }: {
         data: {
-            project: ProjectData;
+            project: ProjectBasic;
             form: SuperValidated<Infer<RoomSchema>>;
             projectUpdateForm: SuperValidated<Infer<ProjectSchema>>;
+            rooms: RoomWithRelations[];
         };
     } = $props();
 
+    const {
+        project,
+        form: formData,
+        projectUpdateForm: projectUpdateFormData,
+        rooms,
+    } = data;
+
+    // State for UI controls
     let createDialogOpen = $state(false);
     let updateDialogOpen = $state(false);
     let createSheetOpen = $state(false);
@@ -44,7 +58,7 @@
     let submittingRoom = $state(false);
     let submittingUpdate = $state(false);
 
-    const form = superForm(data.form, {
+    const form = superForm(formData, {
         validators: zodClient(roomSchema),
         dataType: "json",
         taintedMessage: null,
@@ -68,7 +82,7 @@
         },
     });
 
-    const projectUpdateForm = superForm(data.projectUpdateForm, {
+    const projectUpdateForm = superForm(projectUpdateFormData, {
         validators: zodClient(projectSchema),
         dataType: "json",
         taintedMessage: null,
@@ -108,16 +122,14 @@
     <Card.Header
         class={cn(
             "flex flex-row items-center justify-between w-full",
-            data.project.rooms && data.project.rooms.length === 0 ? "pb-4" : "",
+            rooms && rooms.length === 0 ? "pb-4" : "",
         )}
     >
         <div class="flex flex-col gap-1 w-fit">
-            <Card.Title class="flex items-center"
-                >{data.project.name}</Card.Title
-            >
+            <Card.Title class="flex items-center">{project.name}</Card.Title>
             <Card.Description class="max-md:text-xs">
                 Manage rooms for this project.
-                {#if data.project.rooms.length > 0}
+                {#if rooms.length > 0}
                     <br />Click on a room its boxes.
                 {/if}
             </Card.Description>
@@ -148,7 +160,7 @@
             </DropdownMenu.Content>
         </DropdownMenu.Root>
     </Card.Header>
-    {#if data.project.rooms.length && data.project.rooms.length > 0}
+    {#if rooms.length && rooms.length > 0}
         <Card.Content>
             <Table.Root>
                 <Table.Header>
@@ -167,7 +179,7 @@
                     </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                    {#each data.project.rooms as room}
+                    {#each rooms as room}
                         <Table.Row
                             data-sveltekit-preload-code="eager"
                             on:click={() =>
@@ -249,9 +261,9 @@
         <Card.Footer>
             <div class="text-muted-foreground text-xs">
                 Showing <strong>
-                    {data.project.rooms.length}
+                    {rooms.length}
                 </strong>
-                {#if data.project.rooms.length === 1}
+                {#if rooms.length === 1}
                     room
                 {:else}
                     rooms
@@ -273,14 +285,14 @@
 <CreateRoomSheet open={createSheetOpen} {form} submitting={submittingRoom} />
 
 <UpdateProjectDialog
-    projectId={data.project.id}
+    projectId={project.id}
     open={updateDialogOpen}
     form={projectUpdateForm}
     submitting={submittingUpdate}
 />
 
 <UpdateProjectSheet
-    projectId={data.project.id}
+    projectId={project.id}
     open={updateSheetOpen}
     form={projectUpdateForm}
     submitting={submittingUpdate}

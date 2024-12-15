@@ -1,7 +1,7 @@
 // src/routes/dashboard/+page.server.ts
 import { error, fail, redirect, type Redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
-import db from "@db";
+
 import { project, user, room } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { generateHandle } from "@utils";
@@ -9,12 +9,12 @@ import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { projectSchema } from "@routes/settings/zod";
 import type { ProjectData } from "@types";
+import db from "@db";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
-
   const projects = (await db.query.project.findMany({
     where: eq(project.userId, locals.user.id),
     with: {

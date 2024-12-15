@@ -20,11 +20,18 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     throw redirect(302, "/login");
   }
 
-  const PROJECT = await db.query.project.findFirst({
+  // Combine these queries into one
+  const projectWithRooms = await db.query.project.findFirst({
     where: and(
       eq(project.handle, params.handle),
       eq(project.userId, locals.user.id),
     ),
+    columns: {
+      id: true,
+      name: true,
+      fromAddress: true,
+      toAddress: true,
+    },
     with: {
       rooms: {
         with: {
@@ -36,34 +43,33 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     },
   });
 
-  // console.log("[Project Handle Page Server] Load Data:", { PROJECT });
-
-  if (!PROJECT) {
-    console.error("Project not found");
-    throw redirect(302, "/dashboard"); // or handle the "room not found" case
+  if (!projectWithRooms) {
+    throw redirect(302, "/dashboard");
   }
 
-  // Create a new update form pre-populated with project data
   const projectUpdateForm = await superValidate(
     {
-      name: PROJECT.name,
-      fromAddress: PROJECT.fromAddress,
-      toAddress: PROJECT.toAddress,
-      rooms: PROJECT.rooms.map((room) => ({
-        name: room.name,
-        colorCode: room.colorCode,
-      })),
+      name: projectWithRooms.name,
+      fromAddress: projectWithRooms.fromAddress,
+      toAddress: projectWithRooms.toAddress,
+      rooms: projectWithRooms.rooms,
     },
     zod(projectSchema),
   );
 
-  // Your existing room form
   const createRoomForm = await superValidate(zod(roomSchema));
 
+  // Return immediately available data and stream the rest
   return {
-    project: PROJECT,
+    project: {
+      id: projectWithRooms.id,
+      name: projectWithRooms.name,
+      fromAddress: projectWithRooms.fromAddress,
+      toAddress: projectWithRooms.toAddress,
+    },
     form: createRoomForm,
     projectUpdateForm,
+    rooms: projectWithRooms.rooms,
   };
 };
 
