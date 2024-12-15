@@ -65,94 +65,80 @@ const csrfProtect: Handle = async ({ event, resolve }) => {
   }
 };
 
-const handleTiming: Handle = async ({ event, resolve }) => {
-  const requestStart = performance.now();
-  const requestId = crypto.randomUUID();
+// const handleTiming: Handle = async ({ event, resolve }) => {
+//   const requestStart = performance.now();
+//   const requestId = crypto.randomUUID();
 
-  console.log({
-    event: "RequestStart",
-    requestId,
-    path: event.url.pathname,
-    timestamp: new Date().toISOString(),
-  });
+//   console.log({
+//     event: "RequestStart",
+//     requestId,
+//     path: event.url.pathname,
+//     timestamp: new Date().toISOString(),
+//   });
 
-  try {
-    const response = await resolve(event);
-    const duration = performance.now() - requestStart;
+//   try {
+//     const response = await resolve(event);
+//     const duration = performance.now() - requestStart;
 
-    console.log({
-      event: "RequestComplete",
-      requestId,
-      path: event.url.pathname,
-      duration: `${duration.toFixed(2)}ms`,
-      timestamp: new Date().toISOString(),
-      status: response.status,
-    });
+//     console.log({
+//       event: "RequestComplete",
+//       requestId,
+//       path: event.url.pathname,
+//       duration: `${duration.toFixed(2)}ms`,
+//       timestamp: new Date().toISOString(),
+//       status: response.status,
+//     });
 
-    // Add timing header
-    response.headers.set("Server-Timing", `total;dur=${duration.toFixed(2)}`);
-    return response;
-  } catch (error) {
-    console.error({
-      event: "RequestError",
-      requestId,
-      path: event.url.pathname,
-      duration: `${(performance.now() - requestStart).toFixed(2)}ms`,
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
-    });
-    throw error;
-  }
-};
-
-const handleCompression: Handle = async ({ event, resolve }) => {
+//     // Add timing header
+//     response.headers.set("Server-Timing", `total;dur=${duration.toFixed(2)}`);
+//     return response;
+//   } catch (error) {
+//     console.error({
+//       event: "RequestError",
+//       requestId,
+//       path: event.url.pathname,
+//       duration: `${(performance.now() - requestStart).toFixed(2)}ms`,
+//       error: error instanceof Error ? error.message : String(error),
+//       timestamp: new Date().toISOString(),
+//     });
+//     throw error;
+//   }
+// };
+const handleDataRequests: Handle = async ({ event, resolve }) => {
   const start = performance.now();
-  const timings: Record<string, number> = {};
 
   try {
     const response = await resolve(event);
-    timings.resolve = performance.now() - start;
+    const duration = performance.now() - start;
 
     if (event.url.pathname.endsWith("__data.json")) {
-      const compressStart = performance.now();
-      const originalBody = await response.text();
-      timings.getText = performance.now() - compressStart;
+      // Add timing headers
+      response.headers.set("Server-Timing", `total;dur=${duration.toFixed(2)}`);
 
+      // Force connection close
+      response.headers.set("Connection", "close");
+
+      // Add compression for data requests
       const acceptEncoding = event.request.headers.get("accept-encoding") || "";
-
       if (acceptEncoding.includes("gzip")) {
-        const compressStart = performance.now();
-        const compressed = Bun.gzipSync(Buffer.from(originalBody));
-        timings.compression = performance.now() - compressStart;
+        const body = await response.text();
+        const compressed = Bun.gzipSync(Buffer.from(body));
 
-        const newResponse = new Response(compressed, {
+        return new Response(compressed, {
           headers: {
             ...Object.fromEntries(response.headers),
             "content-encoding": "gzip",
             "content-type": "application/json",
-            vary: "Accept-Encoding",
-            "timing-info": JSON.stringify(timings),
+            vary: "accept-encoding",
           },
         });
-
-        console.log("Compression timings:", {
-          path: event.url.pathname,
-          originalSize: originalBody.length,
-          compressedSize: compressed.length,
-          ...timings,
-        });
-
-        return newResponse;
       }
     }
 
     return response;
   } catch (error) {
-    console.error("Compression error:", error, {
-      path: event.url.pathname,
-      timings,
-    });
-    return resolve(event);
+    console.error("Request error:", error);
+    throw error;
   }
 };
 
@@ -208,9 +194,4 @@ const handleAuth: Handle = async ({ event, resolve }) => {
   }
 };
 
-export const handle = sequence(
-  handleCompression,
-  handleTiming,
-  csrfProtect,
-  handleAuth,
-);
+export const handle = sequence(handleDataRequests, csrfProtect, handleAuth);
