@@ -1,25 +1,25 @@
 // src/routes/health/+server.ts
 import db from "@db";
-import { json } from "@sveltejs/kit";
-import { sql } from "drizzle-orm";
 
 export async function GET() {
+  const start = performance.now();
+
   try {
-    // Test database connection
-    await db.execute(sql`SELECT 1`);
-
-    return json({
-      status: "healthy",
-      timestamp: new Date().toISOString(),
+    // Quick DB check
+    await db.query.project.findFirst({
+      columns: { id: true },
     });
-  } catch (error) {
-    console.error("Health check failed:", error);
 
-    return new Response("Unhealthy", {
-      status: 500,
+    const duration = performance.now() - start;
+    return new Response("OK", {
+      status: 200,
       headers: {
-        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+        "Server-Timing": `total;dur=${duration.toFixed(2)}`,
       },
     });
+  } catch (error) {
+    console.error("Healthcheck failed:", error);
+    return new Response("ERROR", { status: 500 });
   }
 }
