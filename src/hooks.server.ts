@@ -103,6 +103,57 @@ const handleTiming: Handle = async ({ event, resolve }) => {
   }
 };
 
+const handleCompression: Handle = async ({ event, resolve }) => {
+  const start = performance.now();
+  const timings: Record<string, number> = {};
+
+  try {
+    const response = await resolve(event);
+    timings.resolve = performance.now() - start;
+
+    if (event.url.pathname.endsWith("__data.json")) {
+      const compressStart = performance.now();
+      const originalBody = await response.text();
+      timings.getText = performance.now() - compressStart;
+
+      const acceptEncoding = event.request.headers.get("accept-encoding") || "";
+
+      if (acceptEncoding.includes("gzip")) {
+        const compressStart = performance.now();
+        const compressed = Bun.gzipSync(Buffer.from(originalBody));
+        timings.compression = performance.now() - compressStart;
+
+        const newResponse = new Response(compressed, {
+          headers: {
+            ...Object.fromEntries(response.headers),
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            vary: "Accept-Encoding",
+            "timing-info": JSON.stringify(timings),
+          },
+        });
+
+        console.log("Compression timings:", {
+          path: event.url.pathname,
+          originalSize: originalBody.length,
+          compressedSize: compressed.length,
+          ...timings,
+        });
+
+        return newResponse;
+      }
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Compression error:", error, {
+      path: event.url.pathname,
+      timings,
+    });
+    return resolve(event);
+  }
+};
+
 // Your existing auth handler
 const handleAuth: Handle = async ({ event, resolve }) => {
   try {
@@ -137,4 +188,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
   }
 };
 
-export const handle = sequence(handleTiming, csrfProtect, handleAuth);
+export const handle = sequence(
+  handleCompression,
+  handleTiming,
+  csrfProtect,
+  handleAuth,
+);
