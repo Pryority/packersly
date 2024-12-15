@@ -16,31 +16,12 @@ import { projectSchema, roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
+  const timings: Record<string, number> = {};
   const startTime = performance.now();
-  const logTiming = (step: string, startFrom: number) => {
-    const duration = performance.now() - startFrom;
-    console.log({
-      step,
-      duration: `${duration.toFixed(2)}ms`,
-      totalElapsed: `${(performance.now() - startTime).toFixed(2)}ms`,
-      timestamp: new Date().toISOString(),
-      handle: params.handle,
-      userId: locals?.user?.id,
-    });
-  };
 
-  // Log initial connection state
-  console.log({
-    event: "StartingLoad",
-    timestamp: new Date().toISOString(),
-    connectionStats: await getConnectionStats(), // implement this function
-  });
-
-  const authStart = performance.now();
   if (!locals.user) {
     throw redirect(302, "/login");
   }
-  logTiming("AuthCheck", authStart);
 
   const queryStart = performance.now();
   const projectWithRooms = await db.query.project.findFirst({
@@ -64,13 +45,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
       },
     },
   });
-  logTiming("DatabaseQuery", queryStart);
+  timings.query = performance.now() - queryStart;
 
   if (!projectWithRooms) {
     throw redirect(302, "/dashboard");
   }
 
-  const formStart = performance.now();
+  const formsStart = performance.now();
   const [projectUpdateForm, createRoomForm] = await Promise.all([
     superValidate(
       {
@@ -83,9 +64,15 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     ),
     superValidate(zod(roomSchema)),
   ]);
-  logTiming("FormValidation", formStart);
+  timings.forms = performance.now() - formsStart;
 
-  const result = {
+  console.log("Load function timings:", {
+    total: performance.now() - startTime,
+    ...timings,
+    dataSize: JSON.stringify(projectWithRooms).length,
+  });
+
+  return {
     project: {
       id: projectWithRooms.id,
       name: projectWithRooms.name,
@@ -96,9 +83,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     projectUpdateForm,
     rooms: projectWithRooms.rooms,
   };
-
-  logTiming("TotalLoadFunction", startTime);
-  return result;
 };
 
 // Add this helper function to monitor connection pool
