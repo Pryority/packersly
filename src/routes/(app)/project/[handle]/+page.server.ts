@@ -16,11 +16,16 @@ import { projectSchema, roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
+  const start = performance.now();
+  const timings: Record<string, number> = {};
+
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  // Combine these queries into one
+  console.log("Starting database query...", new Date().toISOString());
+  const queryStart = performance.now();
+
   const projectWithRooms = await db.query.project.findFirst({
     where: and(
       eq(project.handle, params.handle),
@@ -43,9 +48,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     },
   });
 
+  timings.databaseQuery = performance.now() - queryStart;
+  console.log("Database query completed", {
+    duration: `${timings.databaseQuery.toFixed(2)}ms`,
+    timestamp: new Date().toISOString(),
+    handle: params.handle,
+    userId: locals.user.id,
+  });
+
   if (!projectWithRooms) {
     throw redirect(302, "/dashboard");
   }
+
+  const formStart = performance.now();
 
   const projectUpdateForm = await superValidate(
     {
@@ -59,9 +74,17 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
   const createRoomForm = await superValidate(zod(roomSchema));
 
-  // Return immediately available data and stream the rest
+  timings.formProcessing = performance.now() - formStart;
+
+  const totalDuration = performance.now() - start;
+  console.log("Load function completed", {
+    timings,
+    totalDuration: `${totalDuration.toFixed(2)}ms`,
+    timestamp: new Date().toISOString(),
+  });
+
   return {
-    project: {
+    projectBasic: {
       id: projectWithRooms.id,
       name: projectWithRooms.name,
       fromAddress: projectWithRooms.fromAddress,
