@@ -63,6 +63,46 @@ const csrfProtect: Handle = async ({ event, resolve }) => {
   }
 };
 
+const handleTiming: Handle = async ({ event, resolve }) => {
+  const requestStart = performance.now();
+  const requestId = crypto.randomUUID();
+
+  console.log({
+    event: "RequestStart",
+    requestId,
+    path: event.url.pathname,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    const response = await resolve(event);
+    const duration = performance.now() - requestStart;
+
+    console.log({
+      event: "RequestComplete",
+      requestId,
+      path: event.url.pathname,
+      duration: `${duration.toFixed(2)}ms`,
+      timestamp: new Date().toISOString(),
+      status: response.status,
+    });
+
+    // Add timing header
+    response.headers.set("Server-Timing", `total;dur=${duration.toFixed(2)}`);
+    return response;
+  } catch (error) {
+    console.error({
+      event: "RequestError",
+      requestId,
+      path: event.url.pathname,
+      duration: `${(performance.now() - requestStart).toFixed(2)}ms`,
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
+  }
+};
+
 // Your existing auth handler
 const handleAuth: Handle = async ({ event, resolve }) => {
   try {
@@ -97,4 +137,4 @@ const handleAuth: Handle = async ({ event, resolve }) => {
   }
 };
 
-export const handle = sequence(csrfProtect, handleAuth);
+export const handle = sequence(handleTiming, csrfProtect, handleAuth);
