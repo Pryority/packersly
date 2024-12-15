@@ -45,7 +45,7 @@
 
     const {
         project,
-        form: formData,
+        form: roomFormData,
         projectUpdateForm: projectUpdateFormData,
         rooms,
     } = data;
@@ -58,7 +58,8 @@
     let submittingRoom = $state(false);
     let submittingUpdate = $state(false);
 
-    const form = superForm(formData, {
+    const form = superForm(roomFormData, {
+        id: "room-form",
         validators: zodClient(roomSchema),
         dataType: "json",
         taintedMessage: null,
@@ -83,6 +84,7 @@
     });
 
     const projectUpdateForm = superForm(projectUpdateFormData, {
+        id: "project-update-form",
         validators: zodClient(projectSchema),
         dataType: "json",
         taintedMessage: null,
