@@ -7,7 +7,7 @@ import {
   type Redirect,
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import db, { connection } from "@db";
+import db from "@db";
 import { project, room, user } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
@@ -72,28 +72,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     rooms: projectWithRooms.rooms,
   };
 };
-
-// Add this helper function to monitor connection pool
-async function getConnectionStats() {
-  try {
-    // Check if we can access pool statistics from your postgres client
-    const stats = {
-      totalConnections: await connection.unsafe(
-        "SELECT count(*) FROM pg_stat_activity",
-      ),
-      idleConnections: await connection.unsafe(
-        "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle'",
-      ),
-      activeConnections: await connection.unsafe(
-        "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'",
-      ),
-    };
-    return stats;
-  } catch (error) {
-    console.error("Failed to get connection stats:", error);
-    return null;
-  }
-}
 
 export const actions = {
   "create-room": async ({ locals, request, params, url }) => {
