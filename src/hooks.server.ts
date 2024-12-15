@@ -1,6 +1,8 @@
+// src/hooks.server.ts
 import { sequence } from "@sveltejs/kit/hooks";
 import type { Handle } from "@sveltejs/kit";
 import * as auth from "$lib/server/auth.js";
+import { sessionCache } from "$lib/server/auth.js";
 
 // Helper to check content type
 const isFormContentType = (request: Request) => {
@@ -156,6 +158,8 @@ const handleCompression: Handle = async ({ event, resolve }) => {
 
 // Your existing auth handler
 const handleAuth: Handle = async ({ event, resolve }) => {
+  const start = performance.now();
+
   try {
     const sessionToken = event.cookies.get(auth.sessionCookieName);
     if (!sessionToken) {
@@ -165,7 +169,18 @@ const handleAuth: Handle = async ({ event, resolve }) => {
     }
 
     try {
+      const validationStart = performance.now();
       const { session, user } = await auth.validateSessionToken(sessionToken);
+      const validationDuration = performance.now() - validationStart;
+
+      if (validationDuration > 100) {
+        console.log("Slow session validation:", {
+          duration: validationDuration,
+          path: event.url.pathname,
+          cached: !!sessionCache.get(sessionToken),
+        });
+      }
+
       if (session) {
         auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
       } else {
@@ -174,7 +189,10 @@ const handleAuth: Handle = async ({ event, resolve }) => {
       event.locals.user = user;
       event.locals.session = session;
     } catch (authError) {
-      console.error("Auth validation error:", authError);
+      console.error("Auth validation error:", {
+        error: authError,
+        duration: performance.now() - start,
+      });
       event.locals.user = null;
       event.locals.session = null;
       auth.deleteSessionTokenCookie(event);
@@ -182,8 +200,10 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 
     return resolve(event);
   } catch (error) {
-    console.error("Hook error:", error);
-    // Don't let hook errors crash the application
+    console.error("Hook error:", {
+      error,
+      duration: performance.now() - start,
+    });
     return resolve(event);
   }
 };
