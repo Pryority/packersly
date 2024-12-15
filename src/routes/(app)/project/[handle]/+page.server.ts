@@ -16,14 +16,10 @@ import { projectSchema, roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-  const timings: Record<string, number> = {};
-  const startTime = performance.now();
-
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  const queryStart = performance.now();
   const projectWithRooms = await db.query.project.findFirst({
     where: and(
       eq(project.handle, params.handle),
@@ -37,21 +33,20 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     },
     with: {
       rooms: {
-        with: {
-          boxes: {
-            with: { items: true },
-          },
+        columns: {
+          id: true,
+          name: true,
+          handle: true,
+          colorCode: true,
         },
       },
     },
   });
-  timings.query = performance.now() - queryStart;
 
   if (!projectWithRooms) {
     throw redirect(302, "/dashboard");
   }
 
-  const formsStart = performance.now();
   const [projectUpdateForm, createRoomForm] = await Promise.all([
     superValidate(
       {
@@ -64,13 +59,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     ),
     superValidate(zod(roomSchema)),
   ]);
-  timings.forms = performance.now() - formsStart;
-
-  console.log("Load function timings:", {
-    total: performance.now() - startTime,
-    ...timings,
-    dataSize: JSON.stringify(projectWithRooms).length,
-  });
 
   return {
     project: {
