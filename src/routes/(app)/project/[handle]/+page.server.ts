@@ -7,7 +7,7 @@ import {
   type Redirect,
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import db from "@db";
+import db, { connection } from "@db";
 import { project, room, user } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
@@ -16,16 +16,33 @@ import { projectSchema, roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-  const start = performance.now();
-  const timings: Record<string, number> = {};
+  const startTime = performance.now();
+  const logTiming = (step: string, startFrom: number) => {
+    const duration = performance.now() - startFrom;
+    console.log({
+      step,
+      duration: `${duration.toFixed(2)}ms`,
+      totalElapsed: `${(performance.now() - startTime).toFixed(2)}ms`,
+      timestamp: new Date().toISOString(),
+      handle: params.handle,
+      userId: locals?.user?.id,
+    });
+  };
 
+  // Log initial connection state
+  console.log({
+    event: "StartingLoad",
+    timestamp: new Date().toISOString(),
+    connectionStats: await getConnectionStats(), // implement this function
+  });
+
+  const authStart = performance.now();
   if (!locals.user) {
     throw redirect(302, "/login");
   }
+  logTiming("AuthCheck", authStart);
 
-  console.log("Starting database query...", new Date().toISOString());
   const queryStart = performance.now();
-
   const projectWithRooms = await db.query.project.findFirst({
     where: and(
       eq(project.handle, params.handle),
@@ -47,44 +64,29 @@ export const load: PageServerLoad = async ({ locals, params }) => {
       },
     },
   });
-
-  timings.databaseQuery = performance.now() - queryStart;
-  console.log("Database query completed", {
-    duration: `${timings.databaseQuery.toFixed(2)}ms`,
-    timestamp: new Date().toISOString(),
-    handle: params.handle,
-    userId: locals.user.id,
-  });
+  logTiming("DatabaseQuery", queryStart);
 
   if (!projectWithRooms) {
     throw redirect(302, "/dashboard");
   }
 
   const formStart = performance.now();
+  const [projectUpdateForm, createRoomForm] = await Promise.all([
+    superValidate(
+      {
+        name: projectWithRooms.name,
+        fromAddress: projectWithRooms.fromAddress,
+        toAddress: projectWithRooms.toAddress,
+        rooms: projectWithRooms.rooms,
+      },
+      zod(projectSchema),
+    ),
+    superValidate(zod(roomSchema)),
+  ]);
+  logTiming("FormValidation", formStart);
 
-  const projectUpdateForm = await superValidate(
-    {
-      name: projectWithRooms.name,
-      fromAddress: projectWithRooms.fromAddress,
-      toAddress: projectWithRooms.toAddress,
-      rooms: projectWithRooms.rooms,
-    },
-    zod(projectSchema),
-  );
-
-  const createRoomForm = await superValidate(zod(roomSchema));
-
-  timings.formProcessing = performance.now() - formStart;
-
-  const totalDuration = performance.now() - start;
-  console.log("Load function completed", {
-    timings,
-    totalDuration: `${totalDuration.toFixed(2)}ms`,
-    timestamp: new Date().toISOString(),
-  });
-
-  return {
-    projectBasic: {
+  const result = {
+    project: {
       id: projectWithRooms.id,
       name: projectWithRooms.name,
       fromAddress: projectWithRooms.fromAddress,
@@ -94,7 +96,32 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     projectUpdateForm,
     rooms: projectWithRooms.rooms,
   };
+
+  logTiming("TotalLoadFunction", startTime);
+  return result;
 };
+
+// Add this helper function to monitor connection pool
+async function getConnectionStats() {
+  try {
+    // Check if we can access pool statistics from your postgres client
+    const stats = {
+      totalConnections: await connection.unsafe(
+        "SELECT count(*) FROM pg_stat_activity",
+      ),
+      idleConnections: await connection.unsafe(
+        "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle'",
+      ),
+      activeConnections: await connection.unsafe(
+        "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'",
+      ),
+    };
+    return stats;
+  } catch (error) {
+    console.error("Failed to get connection stats:", error);
+    return null;
+  }
+}
 
 export const actions = {
   "create-room": async ({ locals, request, params, url }) => {
