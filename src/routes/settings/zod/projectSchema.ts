@@ -18,7 +18,7 @@ const projectSchema = z.object({
   rooms: z
     .array(roomSchema)
     .min(1, "At least one room is required")
-    .max(20, "Maximum 20 rooms allowed"),
+    .max(50, "Maximum 50 rooms allowed"),
 });
 
 export type ProjectSchema = typeof projectSchema;
