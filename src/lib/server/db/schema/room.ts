@@ -1,4 +1,4 @@
-import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import project from "./project";
 import box from "./box";
@@ -17,15 +17,13 @@ const room = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => {
-    return {
-      // Add raw SQL constraints for min and max length
-      nameLengthConstraint: sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
-      handleLengthConstraint: sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
-      // Ensure unique handle per projectId (per user)
-      uniqueHandlePerProject: sql`CONSTRAINT unique_room_handle_per_project UNIQUE (${table.projectId}, ${table.handle})`,
-    };
-  },
+  (table) => [
+    // Add raw SQL constraints for min and max length
+    sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
+    sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
+    // Ensure unique handle per projectId (per user)
+    sql`CONSTRAINT unique_room_handle_per_project UNIQUE (${table.projectId}, ${table.handle})`,
+  ],
 );
 
 export const roomRelations = relations(room, ({ one, many }) => ({

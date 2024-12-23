@@ -31,17 +31,14 @@ const project = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => {
-    return {
-      // Add raw SQL constraints for min and max length
-      nameLengthConstraint: sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
-      handleLengthConstraint: sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
-      uniqueHandlePerUser: uniqueIndex("unique_project_handle_per_user").on(
-        table.userId,
-        table.handle,
-      ),
-    };
-  },
+  (table) => [
+    sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
+    sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
+    uniqueIndex("unique_project_handle_per_user").on(
+      table.userId,
+      table.handle,
+    ),
+  ],
 );
 
 export const projectRelations = relations(project, ({ one, many }) => ({
