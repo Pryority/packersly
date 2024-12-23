@@ -1,4 +1,11 @@
-import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  integer,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import user from "./user";
 import room from "./room";
@@ -29,7 +36,10 @@ const project = pgTable(
       // Add raw SQL constraints for min and max length
       nameLengthConstraint: sql`CHECK (char_length(${table.name}) >= 3 AND char_length(${table.name}) <= 50)`,
       handleLengthConstraint: sql`CHECK (char_length(${table.handle}) >= 3 AND char_length(${table.handle}) <= 50)`,
-      uniqueHandlePerUser: sql`CONSTRAINT unique_project_handle_per_user UNIQUE (${table.userId}, ${table.handle})`,
+      uniqueHandlePerUser: uniqueIndex("unique_project_handle_per_user").on(
+        table.userId,
+        table.handle,
+      ),
     };
   },
 );
