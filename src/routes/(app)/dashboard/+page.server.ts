@@ -3,7 +3,7 @@ import { error, fail, redirect, type Redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 
 import { project, user, room } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import { generateHandle } from "@utils";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
@@ -60,12 +60,29 @@ export const actions = {
         return fail(404, { message: "User not found" });
       }
       const newProject = await db.transaction(async (tx) => {
+        const baseHandle = generateHandle(form.data.name);
+
+        const existingProjects = await tx
+          .select({ handle: project.handle })
+          .from(project)
+          .where(
+            and(
+              eq(project.userId, USER.id),
+              like(project.handle, `${baseHandle}%`),
+            ),
+          );
+
+        let uniqueHandle = baseHandle;
+        if (existingProjects.length > 0) {
+          uniqueHandle = `${baseHandle}-${existingProjects.length + 1}`;
+        }
+
         const [createdProject] = await tx
           .insert(project)
           .values({
             userId: USER.id,
             name: form.data.name,
-            handle: generateHandle(form.data.name),
+            handle: uniqueHandle,
             fromAddress: form.data.fromAddress,
             toAddress: form.data.toAddress,
             status: "draft",
