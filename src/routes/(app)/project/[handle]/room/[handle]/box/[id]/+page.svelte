@@ -1,253 +1,241 @@
 <!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
-    import { enhance } from "$app/forms";
-    import Download from "lucide-svelte/icons/download";
-    import { Button } from "@components/ui/button/index.js";
-    import * as Card from "@components/ui/card/index.js";
-    import QRCode from "qrcode";
-    import * as Table from "@components/ui/table/index.js";
-    import * as Form from "@components/ui/form";
-    import type { Box } from "@db/schema/box";
-    import {
-        downloadQrSchema,
-        type DownloadQrSchema,
-    } from "@routes/settings/zod";
-    import {
-        type SuperValidated,
-        type Infer,
-        superForm,
-    } from "sveltekit-superforms";
-    import { zodClient } from "sveltekit-superforms/adapters";
-    import type { ActionResult } from "@sveltejs/kit";
+  import { enhance } from "$app/forms";
+  import Download from "lucide-svelte/icons/download";
+  import { Button } from "@components/ui/button/index.js";
+  import * as Card from "@components/ui/card/index.js";
+  import QRCode from "qrcode";
+  import * as Table from "@components/ui/table/index.js";
+  import * as Form from "@components/ui/form";
+  import type { Box } from "@db/schema/box";
+  import {
+    downloadQrSchema,
+    type DownloadQrSchema,
+  } from "@routes/settings/zod";
+  import {
+    type SuperValidated,
+    type Infer,
+    superForm,
+  } from "sveltekit-superforms";
+  import { zodClient } from "sveltekit-superforms/adapters";
+  import type { ActionResult } from "@sveltejs/kit";
 
-    const { data } = $props<{
-        data: {
-            box: Box & {
-                items: Array<{
-                    id: string;
-                    name: string;
-                    quantity: number;
-                }>;
-            };
-            form: SuperValidated<Infer<DownloadQrSchema>>;
-        };
-    }>();
-    const { box } = data;
-    const form = superForm(data.form, {
-        validators: zodClient(downloadQrSchema),
-        dataType: "json",
-        taintedMessage: null,
-        onSubmit: ({ cancel }) => {
-            submitting = true;
-            return async ({ result }: { result: ActionResult }) => {
-                if (result.type === "success") {
-                    try {
-                        const response = await fetch("/api/download-qr", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                                qrCode: $formData.qrCode,
-                                colorCode: $formData.colorCode,
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error("Download failed");
-                        }
-
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = "box-qr-code.svg";
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        a.remove();
-                    } catch (error) {
-                        console.error("Download error:", error);
-                    } finally {
-                        submitting = false;
-                        cancel();
-                    }
-                } else {
-                    submitting = false;
-                    cancel();
-                }
-            };
-        },
-        onError: () => {
-            submitting = false;
-        },
-    });
-
-    const { form: formData, errors } = form;
-    let submitting = $state(false);
-    let qrCanvas = $state<HTMLCanvasElement>();
-
-    $effect(() => {
-        if (box.qrCode?.url && qrCanvas) {
-            QRCode.toCanvas(qrCanvas, box.qrCode.url, {
-                width: 256,
-                margin: 0,
-                errorCorrectionLevel: "M",
-            }).catch((err) => {
-                console.error("Error generating QR code:", err);
+  const { data } = $props<{
+    data: {
+      box: Box & {
+        items: Array<{
+          id: string;
+          name: string;
+          quantity: number;
+        }>;
+      };
+      form: SuperValidated<Infer<DownloadQrSchema>>;
+    };
+  }>();
+  const { box } = data;
+  const form = superForm(data.form, {
+    id: "download-qr",
+    validators: zodClient(downloadQrSchema),
+    dataType: "json",
+    taintedMessage: null,
+    onSubmit: ({ cancel }) => {
+      submitting = true;
+      return async ({ result }: { result: ActionResult }) => {
+        if (result.type === "success") {
+          try {
+            const response = await fetch("/api/qr-code/download", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                qrCode: $formData.qrCode,
+                colorCode: $formData.colorCode,
+              }),
             });
-        }
-    });
 
-    $effect(() => {
-        if (box.qrCode?.url && (!$formData.qrCode || !$formData.colorCode)) {
-            QRCode.toString(box.qrCode.url, {
-                type: "svg",
-                margin: 0,
-                errorCorrectionLevel: "M",
-                width: 256,
-            })
-                .then((qrCodeSvg) => {
-                    formData.update(($formData) => ({
-                        ...$formData,
-                        qrCode: qrCodeSvg, // Send the SVG content instead of the URL
-                        colorCode: data.box.room.colorCode,
-                    }));
-                })
-                .catch((err) => {
-                    console.error("Error generating QR code SVG:", err);
-                });
+            if (!response.ok) {
+              throw new Error("Download failed");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "box-qr-code.svg";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+          } catch (error) {
+            console.error("Download error:", error);
+          } finally {
+            submitting = false;
+            cancel();
+          }
+        } else {
+          submitting = false;
+          cancel();
         }
-    });
+      };
+    },
+    onError: () => {
+      submitting = false;
+    },
+  });
+
+  const { form: formData, errors } = form;
+  let submitting = $state(false);
+  let qrCanvas = $state<HTMLCanvasElement>();
+
+  $effect(() => {
+    if (box.qrCode?.url && qrCanvas) {
+      QRCode.toCanvas(qrCanvas, box.qrCode.url, {
+        width: 256,
+        margin: 0,
+        errorCorrectionLevel: "M",
+      }).catch((err) => {
+        console.error("Error generating QR code:", err);
+      });
+    }
+  });
+
+  $effect(() => {
+    if (box.qrCode?.url && (!$formData.qrCode || !$formData.colorCode)) {
+      QRCode.toString(box.qrCode.url, {
+        type: "svg",
+        margin: 0,
+        errorCorrectionLevel: "M",
+        width: 256,
+      })
+        .then((qrCodeSvg) => {
+          formData.update(($formData) => ({
+            ...$formData,
+            qrCode: qrCodeSvg, // Send the SVG content instead of the URL
+            colorCode: data.box.room.colorCode,
+          }));
+        })
+        .catch((err) => {
+          console.error("Error generating QR code SVG:", err);
+        });
+    }
+  });
 </script>
 
 <Card.Root class="m-4">
-    <Card.Header class="space-y-8">
-        <div class="flex flex-col gap-1">
-            <Card.Title>Box Details</Card.Title>
-            <Card.Description
-                >View and manage items in this box.</Card.Description
-            >
+  <Card.Header class="space-y-8">
+    <div class="flex flex-col gap-1">
+      <Card.Title>Box Details</Card.Title>
+      <Card.Description>View and manage items in this box.</Card.Description>
+    </div>
+    {#if box.qrCode}
+      <div class="mt-4 flex flex-col items-center gap-2">
+        <div
+          class="w-64 h-64 rounded-lg flex items-center justify-center"
+          style={`border: 8px solid ${box.room.colorCode}`}
+        >
+          {#if box.qrCode?.url}
+            <canvas bind:this={qrCanvas} class="p-3 object-contain"></canvas>
+          {/if}
         </div>
-        {#if box.qrCode}
-            <div class="mt-4 flex flex-col items-center gap-2">
-                <div
-                    class="w-64 h-64 rounded-lg flex items-center justify-center"
-                    style={`border: 8px solid ${box.room.colorCode}`}
-                >
-                    {#if box.qrCode?.url}
-                        <canvas bind:this={qrCanvas} class="p-3 object-contain"
-                        ></canvas>
-                    {/if}
-                </div>
-                <div class="flex flex-col items-center gap-2 mt-2">
-                    <span class="text-sm text-muted-foreground">
-                        Scan to view box contents
-                    </span>
-                    <form
-                        method="POST"
-                        action="?/download"
-                        use:enhance={({ cancel }) => {
-                            submitting = true;
-                            return async () => {
-                                try {
-                                    const response = await fetch(
-                                        "/api/download-qr",
-                                        {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type":
-                                                    "application/json",
-                                            },
-                                            body: JSON.stringify({
-                                                qrCode: $formData.qrCode,
-                                                colorCode: $formData.colorCode,
-                                            }),
-                                        },
-                                    );
+        <div class="flex flex-col items-center gap-2 mt-2">
+          <span class="text-sm text-muted-foreground">
+            Scan to view box contents
+          </span>
+          <form
+            method="POST"
+            action="?/download"
+            use:enhance={({ cancel }) => {
+              submitting = true;
+              return async () => {
+                try {
+                  const response = await fetch("/api/qr-code/download", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      qrCode: $formData.qrCode,
+                      colorCode: $formData.colorCode,
+                    }),
+                  });
 
-                                    if (!response.ok)
-                                        throw new Error("Download failed");
+                  if (!response.ok) throw new Error("Download failed");
 
-                                    const blob = await response.blob();
-                                    const url =
-                                        window.URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = "box-qr-code.svg";
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    window.URL.revokeObjectURL(url);
-                                    a.remove();
-                                } catch (error) {
-                                    console.error("Download error:", error);
-                                } finally {
-                                    submitting = false;
-                                    cancel();
-                                }
-                            };
-                        }}
-                    >
-                        <Form.Field {form} name="qrCode">
-                            <Form.Control let:attrs>
-                                <input
-                                    type="hidden"
-                                    bind:value={$formData.qrCode}
-                                    {...attrs}
-                                />
-                            </Form.Control>
-                        </Form.Field>
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "box-qr-code.svg";
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  a.remove();
+                } catch (error) {
+                  console.error("Download error:", error);
+                } finally {
+                  submitting = false;
+                  cancel();
+                }
+              };
+            }}
+          >
+            <Form.Field {form} name="qrCode">
+              <Form.Control let:attrs>
+                <input type="hidden" bind:value={$formData.qrCode} {...attrs} />
+              </Form.Control>
+            </Form.Field>
 
-                        <Form.Field {form} name="colorCode">
-                            <Form.Control let:attrs>
-                                <input
-                                    type="hidden"
-                                    bind:value={$formData.colorCode}
-                                    {...attrs}
-                                />
-                            </Form.Control>
-                        </Form.Field>
+            <Form.Field {form} name="colorCode">
+              <Form.Control let:attrs>
+                <input
+                  type="hidden"
+                  bind:value={$formData.colorCode}
+                  {...attrs}
+                />
+              </Form.Control>
+            </Form.Field>
 
-                        <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            class="flex items-center gap-2"
-                        >
-                            <Download class="h-4 w-4" />
-                            {submitting ? "Downloading..." : "Download QR Code"}
-                        </Button>
-                    </form>
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              class="flex items-center gap-2"
+            >
+              <Download class="h-4 w-4" />
+              {submitting ? "Downloading..." : "Download QR Code"}
+            </Button>
+          </form>
 
-                    <!-- Show any form errors -->
-                    {#if $errors.qrCode || $errors.colorCode}
-                        <span class="text-destructive text-sm">
-                            {$errors.qrCode?.[0] || $errors.colorCode?.[0]}
-                        </span>
-                    {/if}
-                </div>
-            </div>
-        {/if}
-    </Card.Header>
-    <Card.Content>
-        <Table.Root>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Item</Table.Head>
-                    <Table.Head>Quantity</Table.Head>
-                    <!-- <Table.Head>
+          <!-- Show any form errors -->
+          {#if $errors.qrCode || $errors.colorCode}
+            <span class="text-destructive text-sm">
+              {$errors.qrCode?.[0] || $errors.colorCode?.[0]}
+            </span>
+          {/if}
+        </div>
+      </div>
+    {/if}
+  </Card.Header>
+  <Card.Content>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>Item</Table.Head>
+          <Table.Head>Quantity</Table.Head>
+          <!-- <Table.Head>
                         <span class="sr-only">Actions</span>
                     </Table.Head> -->
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {#each box.items as item}
-                    <Table.Row>
-                        <Table.Cell class="font-medium">
-                            {item.name}
-                        </Table.Cell>
-                        <Table.Cell>{item.quantity}</Table.Cell>
-                        <!-- <Table.Cell>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {#each box.items as item}
+          <Table.Row>
+            <Table.Cell class="font-medium">
+              {item.name}
+            </Table.Cell>
+            <Table.Cell>{item.quantity}</Table.Cell>
+            <!-- <Table.Cell>
                             <DropdownMenu.Root>
                                 <DropdownMenu.Trigger asChild let:builder>
                                     <Button
@@ -271,17 +259,16 @@
                                 </DropdownMenu.Content>
                             </DropdownMenu.Root>
                         </Table.Cell> -->
-                    </Table.Row>
-                {/each}
-            </Table.Body>
-        </Table.Root>
-    </Card.Content>
-    <Card.Footer>
-        <div class="text-muted-foreground text-xs">
-            Showing <strong>{box.items.length}</strong> item{box.items
-                .length === 1
-                ? ""
-                : "s"}
-        </div>
-    </Card.Footer>
+          </Table.Row>
+        {/each}
+      </Table.Body>
+    </Table.Root>
+  </Card.Content>
+  <Card.Footer>
+    <div class="text-muted-foreground text-xs">
+      Showing <strong>{box.items.length}</strong> item{box.items.length === 1
+        ? ""
+        : "s"}
+    </div>
+  </Card.Footer>
 </Card.Root>
