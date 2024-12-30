@@ -43,7 +43,7 @@
       return async ({ result }: { result: ActionResult }) => {
         if (result.type === "success") {
           try {
-            const response = await fetch("/api/qr-code/download", {
+            const response = await fetch("/api/qr-code/download/svg", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -149,7 +149,7 @@
               submitting = true;
               return async () => {
                 try {
-                  const response = await fetch("/api/qr-code/download", {
+                  const response = await fetch("/api/qr-code/download/svg", {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",

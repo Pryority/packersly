@@ -7,7 +7,7 @@
   import * as Table from "@components/ui/table/index.js";
   import { page } from "$app/stores";
   import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
-  import type { BoxSchema } from "@routes/settings/zod/boxSchema.js";
+  import type { BoxSchema, GenerateQrSchema } from "@routes/settings/zod";
   import {
     type SuperValidated,
     type Infer,
@@ -16,11 +16,12 @@
   import { goto, invalidateAll } from "$app/navigation";
   import { zodClient } from "sveltekit-superforms/adapters";
   import type { ActionResult } from "@sveltejs/kit";
-  import { boxSchema } from "@routes/settings/zod";
-  import { cn } from "@utils";
+  import { boxSchema, generateQrSchema } from "@routes/settings/zod";
+  import { cn, downloadBlob } from "@utils";
   import QRCode from "qrcode";
   import type { BoxWithRelations } from "@types";
   import { Alert, AlertDescription } from "@components/ui/alert";
+  import Download from "lucide-svelte/icons/download";
 
   const {
     data,
@@ -28,44 +29,61 @@
     data: {
       room: any;
       availableQrCodes: number;
-      form: SuperValidated<Infer<BoxSchema>>;
+      createBoxForm: SuperValidated<Infer<BoxSchema>>;
+      generateQrForm: SuperValidated<Infer<GenerateQrSchema>>;
     };
   } = $props();
 
-  const form = superForm(data.form, {
+  let dialogOpen = $state(false);
+  let sheetOpen = $state(false);
+  let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
+  const availableQrCodes = $derived(data.availableQrCodes);
+
+  const createBoxForm = superForm(data.createBoxForm, {
     id: "create-box-form",
     validators: zodClient(boxSchema),
     dataType: "json",
     taintedMessage: null,
     timeoutMs: 8000, // Add timeout
     onSubmit: ({ cancel }) => {
-      submitting = true;
       return async ({ result }: { result: ActionResult }) => {
         try {
           if (result.type === "error" || result.type === "failure") {
-            submitting = false;
             cancel();
           } else {
             dialogOpen = false;
             sheetOpen = false;
-            submitting = false;
           }
         } catch (error) {
-          submitting = false;
           cancel();
         }
       };
     },
-    onError: () => {
-      submitting = false;
+  });
+
+  const generateQrForm = superForm(data.generateQrForm, {
+    id: "generate-qr-form",
+    validators: zodClient(generateQrSchema),
+    timeoutMs: 8000,
+    dataType: "json",
+    onResult: async ({ result }) => {
+      console.log("Form result:", result);
+      if (result.type === "success") {
+        const pdfBlob = new Blob(
+          [Uint8Array.from(atob(result.data?.pdf), (c) => c.charCodeAt(0))],
+          { type: "application/pdf" },
+        );
+        downloadBlob(pdfBlob, `${data.room.handle}-qr-codes.pdf`);
+        data.availableQrCodes = result.data?.availableQrCodesCount;
+      }
     },
   });
 
-  let dialogOpen = $state(false);
-  let sheetOpen = $state(false);
-  let submitting = $state(false);
-  let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
-  let generatingQr = $state(false);
+  const {
+    form: generateQrFormData,
+    submitting: generatingQr,
+    enhance: enhanceGenerateQr,
+  } = generateQrForm;
 
   function openForm() {
     const isMobile = window.innerWidth < 768;
@@ -73,35 +91,28 @@
     sheetOpen = isMobile;
   }
 
-  async function generateQrCodes(amount: number) {
-    generatingQr = true;
+  async function downloadAllQrCodes() {
     try {
-      const response = await fetch("/api/qr-code/generate", {
+      const response = await fetch("/api/qr-code/download/pdf", {
         method: "POST",
         body: JSON.stringify({
           roomId: data.room.id,
-          count: amount,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to generate QR codes");
+      if (!response.ok) throw new Error("Failed to download QR codes");
 
-      // Download the PDF
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${data.room.name}-qr-codes.pdf`;
+      a.download = `${data.room.name}-all-qr-codes.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
-
-      await invalidateAll();
     } catch (error) {
-      console.error("Failed to generate QR codes:", error);
-    } finally {
-      generatingQr = false;
+      console.error("Failed to download QR codes:", error);
     }
   }
 
@@ -133,42 +144,103 @@
   <Card.Content>
     <div class="flex flex-col gap-4">
       <div
-        class="bg-secondary p-4 rounded-lg flex items-center justify-between"
+        class="bg-secondary p-4 rounded-lg flex flex-col items-center justify-between gap-4"
       >
-        <div>
-          <p class="text-sm text-muted-foreground">Available QR Codes</p>
-          <p class="text-2xl font-bold">{data.availableQrCodes || 0}</p>
-        </div>
+        <div class="flex w-full justify-between">
+          <div class="max-md:mb-2 max-md:text-center">
+            <p class="text-sm text-muted-foreground">Available QR Codes</p>
+            <p class="text-2xl font-bold">{availableQrCodes || 0}</p>
+          </div>
 
-        <div class="flex gap-2">
-          <Button
-            variant="outline"
-            on:click={() => generateQrCodes(25)}
-            disabled={generatingQr}
+          <form
+            method="POST"
+            action="?/generate-qr"
+            use:enhanceGenerateQr
+            class="flex max-md:flex-col gap-2 max-md:w-full"
           >
-            Generate 25
-          </Button>
-          <Button
-            variant="outline"
-            on:click={() => generateQrCodes(50)}
-            disabled={generatingQr}
-          >
-            Generate 50
-          </Button>
-          <Button on:click={() => generateQrCodes(100)} disabled={generatingQr}>
-            Generate 100
-          </Button>
+            <input type="hidden" name="roomId" value={data.room.id} />
+            <input
+              type="hidden"
+              name="count"
+              value={$generateQrFormData.count}
+            />
+            <Button
+              variant="outline"
+              on:click={() => {
+                $generateQrFormData = {
+                  roomId: data.room.id,
+                  count: 25,
+                };
+              }}
+              disabled={$generatingQr}
+              type="submit"
+            >
+              Generate 25
+            </Button>
+
+            <Button
+              variant="outline"
+              on:click={() => {
+                $generateQrFormData = {
+                  roomId: data.room.id,
+                  count: 50,
+                };
+              }}
+              disabled={$generatingQr}
+              type="submit"
+            >
+              Generate 50
+            </Button>
+
+            <Button
+              variant="outline"
+              on:click={() => {
+                $generateQrFormData = {
+                  roomId: data.room.id,
+                  count: 100,
+                };
+              }}
+              disabled={$generatingQr}
+              type="submit"
+            >
+              Generate 100
+            </Button>
+            <Button
+              on:click={downloadAllQrCodes}
+              disabled={$generatingQr || availableQrCodes === 0}
+              class="relative"
+            >
+              <div class="grid place-items-center w-full h-full">
+                <div class="flex items-center gap-2">
+                  <p>Download All</p>
+                  <Download class="h-4 w-4" />
+                  <div
+                    class="absolute -top-2 -right-2 bg-background border-2 ring-2 ring-secondary border-primary text-primary rounded-full h-6 w-6 grid place-items-center text-[8px] font-medium"
+                  >
+                    {availableQrCodes}
+                  </div>
+                </div>
+              </div>
+            </Button>
+          </form>
         </div>
+        {#if availableQrCodes < 10}
+          <Alert>
+            <AlertDescription>
+              Running low on available QR codes. Generate more to ensure you
+              have enough for your boxes.
+            </AlertDescription>
+          </Alert>
+        {/if}
+        {#if availableQrCodes > 75}
+          <Alert class="border-amber-400">
+            <AlertDescription class="text-amber-600">
+              You have {availableQrCodes} QR codes available. Consider using existing
+              codes before generating more.
+            </AlertDescription>
+          </Alert>
+        {/if}
       </div>
-
-      {#if data.availableQrCodes < 10}
-        <Alert>
-          <AlertDescription>
-            Running low on available QR codes. Generate more to ensure you have
-            enough for your boxes.
-          </AlertDescription>
-        </Alert>
-      {/if}
     </div>
   </Card.Content>
 </Card.Root>
@@ -315,7 +387,7 @@
         </Dialog.Description>
       </Dialog.Header>
       <div>
-        <CreateBoxForm {form} bind:submitting />
+        <CreateBoxForm form={createBoxForm} />
       </div>
     </Dialog.Content>
   </Dialog.Portal>
@@ -347,6 +419,6 @@
         </span>
       </Sheet.Description>
     </Sheet.Header>
-    <CreateBoxForm {form} bind:submitting />
+    <CreateBoxForm form={createBoxForm} />
   </Sheet.Content>
 </Sheet.Root>

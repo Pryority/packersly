@@ -36,7 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Generate all QR codes in a batch
 			for (var i = 0; i < count; i++) {
 				// Calculate which page we're on and the position within that page
-				const currentPage = Math.floor(i / codesPerPage);
+				// const currentPage = Math.floor(i / codesPerPage);
 				const positionOnPage = i % codesPerPage;
 
 				if (positionOnPage === 0 && i > 0) {
@@ -101,8 +101,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return codes;
 		});
 
-		// Finalize the PDF
-		doc.end();
+		// Finalize the PDF doc.end();
 
 		// Wait for PDF generation to complete
 		await pdfComplete;
