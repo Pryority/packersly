@@ -150,11 +150,11 @@ export const actions = {
       const accessToken = crypto.randomUUID();
 
       // Pre-generate QR code URL
-      //const boxUrl = new URL(
-      //	`/project/${projectHandle}/room/${result.room.handle}/box/${boxId}`,
-      //	`https://${url.host}`,
-      //);
-      //boxUrl.searchParams.set("token", accessToken);
+      const boxUrl = new URL(
+        `/project/${projectHandle}/room/${result.room.handle}/box/${boxId}`,
+        `${url.protocol}//${url.host}`,
+      );
+      // boxUrl.searchParams.set("token", accessToken);
 
       // Prepare all insert values outside the transaction
       const boxValues = {
@@ -183,7 +183,7 @@ export const actions = {
           tx.insert(box).values(boxValues),
           tx
             .update(qrCode)
-            .set({ boxId, isAssigned: true })
+            .set({ boxId, isAssigned: true, url: boxUrl.toString() })
             .where(eq(qrCode.id, availableQrCode.id)),
           itemValues.length > 0
             ? tx.insert(item).values(itemValues)
@@ -223,7 +223,22 @@ export const actions = {
     if (!form.valid) return fail(400, { form });
 
     const { roomId, count: generationCount } = form.data;
-    if (!roomId) return fail(400, { form, message: "Room ID is required" });
+
+    // First, retrieve the project and room handles
+    const roomDetails = await db
+      .select({
+        roomHandle: room.handle,
+        projectHandle: project.handle,
+      })
+      .from(room)
+      .innerJoin(project, eq(room.projectId, project.id))
+      .where(eq(room.id, roomId))
+      .limit(1)
+      .then((result) => result[0]);
+
+    if (!roomDetails) {
+      return fail(404, { form, message: "Room not found" });
+    }
 
     const availableQrCodeCount = await db
       .select({ count: count() })
@@ -282,7 +297,10 @@ export const actions = {
 
           const url = new URL(request.url);
           const baseUrl = `${url.protocol}//${url.host}`;
-          const boxUrl = new URL(`/box/${boxId}`, baseUrl);
+          const boxUrl = new URL(
+            `/project/${roomDetails.projectHandle}/room/${roomDetails.roomHandle}/box/${boxId}`,
+            baseUrl,
+          );
           // boxUrl.searchParams.set("token", accessToken);
 
           // Insert new QR code

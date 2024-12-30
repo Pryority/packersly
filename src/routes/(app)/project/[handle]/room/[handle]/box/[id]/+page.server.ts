@@ -7,8 +7,13 @@ import { downloadQrSchema } from "@routes/settings/zod";
 import { zod } from "sveltekit-superforms/adapters";
 import { superValidate } from "sveltekit-superforms";
 import db from "@db";
+import { validate as validateUUID } from "uuid";
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
+  console.log("Box ID param:", params.id);
+  if (!validateUUID(params.id)) {
+    throw error(400, "Invalid box ID format");
+  }
   if (!locals.user) {
     throw redirect(302, "/login");
   }
