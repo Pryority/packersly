@@ -13,15 +13,16 @@
     type Infer,
     superForm,
   } from "sveltekit-superforms";
-  import { goto, invalidateAll } from "$app/navigation";
+  import { goto } from "$app/navigation";
   import { zodClient } from "sveltekit-superforms/adapters";
   import type { ActionResult } from "@sveltejs/kit";
   import { boxSchema, generateQrSchema } from "@routes/settings/zod";
   import { cn, downloadBlob } from "@utils";
   import QRCode from "qrcode";
   import type { BoxWithRelations } from "@types";
-  import { Alert, AlertDescription } from "@components/ui/alert";
+  import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
   import Download from "lucide-svelte/icons/download";
+  import PlusCircle from "lucide-svelte/icons/plus-circle";
 
   const {
     data,
@@ -224,15 +225,22 @@
             </Button>
           </form>
         </div>
-        {#if availableQrCodes < 10}
+        {#if availableQrCodes === 0}
+          <Alert variant="destructive">
+            <AlertTitle>No QR Codes Available</AlertTitle>
+            <AlertDescription>
+              You must generate QR codes before creating a box to track or store
+              items.
+            </AlertDescription>
+          </Alert>
+        {:else if availableQrCodes < 10}
           <Alert>
             <AlertDescription>
               Running low on available QR codes. Generate more to ensure you
               have enough for your boxes.
             </AlertDescription>
           </Alert>
-        {/if}
-        {#if availableQrCodes > 75}
+        {:else if availableQrCodes > 75}
           <Alert class="border-amber-400">
             <AlertDescription class="text-amber-600">
               You have {availableQrCodes} QR codes available. Consider using existing
@@ -347,9 +355,11 @@
 <Button
   type="button"
   on:click={openForm}
-  class="sticky bottom-2 mx-8 md:mx-[40vw]"
+  disabled={availableQrCodes === 0}
+  class="sticky bottom-2 mx-8 md:mx-[40vw] flex items-center gap-2"
 >
   Create a Box
+  <PlusCircle size={16} />
 </Button>
 
 <Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>

@@ -133,8 +133,8 @@ export const actions = {
         const roomId = crypto.randomUUID();
 
         const existingRooms = await tx
-          .select({ handle: project.handle })
-          .from(project)
+          .select({ handle: room.handle })
+          .from(room)
           .where(
             and(
               eq(room.projectId, PROJECT.id),

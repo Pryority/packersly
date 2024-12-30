@@ -12,110 +12,126 @@ import type { ProjectData } from "@types";
 import db from "@db";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user) {
-		throw redirect(302, "/login");
-	}
-	const projects = (await db.query.project.findMany({
-		where: eq(project.userId, locals.user.id),
-		with: {
-			rooms: {
-				with: {
-					boxes: {
-						with: {
-							items: true, // This will return null/empty for boxes without items
-						},
-					},
-				},
-			},
-		},
-	})) as ProjectData[];
+  if (!locals.user) {
+    throw redirect(302, "/login");
+  }
+  const projects = (await db.query.project.findMany({
+    where: eq(project.userId, locals.user.id),
+    with: {
+      rooms: {
+        with: {
+          boxes: {
+            with: {
+              items: true, // This will return null/empty for boxes without items
+            },
+          },
+        },
+      },
+    },
+  })) as ProjectData[];
 
-	// console.log("Server Load Data:", { user: locals.user, projects });
+  // console.log("Server Load Data:", { user: locals.user, projects });
 
-	return {
-		user: locals.user,
-		form: await superValidate(zod(projectSchema)),
-		projects,
-		showCreateProject: url.searchParams.has("new"),
-	};
+  return {
+    user: locals.user,
+    form: await superValidate(zod(projectSchema)),
+    projects,
+    showCreateProject: url.searchParams.has("new"),
+  };
 };
 
 export const actions = {
-	"create-project": async (event) => {
-		if (!event.locals.user) {
-			throw error(401, "Unauthorized");
-		}
-		const form = await superValidate(event, zod(projectSchema));
-		// console.log("Form data received:", form.data);
-		if (!form.valid) {
-			console.log("Form validation failed:", form.errors);
-			return fail(400, { form });
-		}
-		try {
-			const USER = await db.query.user.findFirst({
-				where: eq(user.id, event.locals.user.id),
-			});
-			// console.log("User found:", USER);
-			if (!USER) {
-				return fail(404, { message: "User not found" });
-			}
-			const newProject = await db.transaction(async (tx) => {
-				const baseHandle = generateHandle(form.data.name);
+  "create-project": async (event) => {
+    if (!event.locals.user) {
+      throw error(401, "Unauthorized");
+    }
+    const form = await superValidate(event, zod(projectSchema));
+    // console.log("Form data received:", form.data);
+    if (!form.valid) {
+      console.log("Form validation failed:", form.errors);
+      return fail(400, { form });
+    }
+    try {
+      const USER = await db.query.user.findFirst({
+        where: eq(user.id, event.locals.user.id),
+      });
+      // console.log("User found:", USER);
+      if (!USER) {
+        return fail(404, { message: "User not found" });
+      }
+      const newProject = await db.transaction(async (tx) => {
+        const baseHandle = generateHandle(form.data.name);
 
-				const existingProjects = await tx
-					.select({ handle: project.handle })
-					.from(project)
-					.where(
-						and(
-							eq(project.userId, USER.id),
-							like(project.handle, `${baseHandle}%`),
-						),
-					);
+        const existingProjects = await tx
+          .select({ handle: project.handle })
+          .from(project)
+          .where(
+            and(
+              eq(project.userId, USER.id),
+              like(project.handle, `${baseHandle}%`),
+            ),
+          );
 
-				let uniqueHandle = baseHandle;
-				if (existingProjects.length > 0) {
-					uniqueHandle = `${baseHandle}-${existingProjects.length + 1}`;
-				}
+        let uniqueHandle = baseHandle;
+        if (existingProjects.length > 0) {
+          uniqueHandle = `${baseHandle}-${existingProjects.length + 1}`;
+        }
 
-				const [createdProject] = await tx
-					.insert(project)
-					.values({
-						userId: USER.id,
-						name: form.data.name,
-						handle: uniqueHandle,
-						fromAddress: form.data.fromAddress,
-						toAddress: form.data.toAddress,
-						status: "draft",
-					})
-					.returning();
+        const [createdProject] = await tx
+          .insert(project)
+          .values({
+            userId: USER.id,
+            name: form.data.name,
+            handle: uniqueHandle,
+            fromAddress: form.data.fromAddress,
+            toAddress: form.data.toAddress,
+            status: "draft",
+          })
+          .returning();
 
-				// Process rooms if they exist
-				if (form.data.rooms?.length) {
-					await Promise.all(
-						form.data.rooms.map((roomData) =>
-							tx.insert(room).values({
-								projectId: createdProject.id,
-								name: roomData.name,
-								handle: generateHandle(roomData.name),
-								colorCode: roomData.colorCode,
-							}),
-						),
-					);
-				}
+        // Process rooms if they exist
+        if (form.data.rooms?.length) {
+          await Promise.all(
+            form.data.rooms.map(async (roomData) => {
+              const baseHandle = generateHandle(roomData.name);
+              const existingRooms = await tx
+                .select({ handle: room.handle })
+                .from(room)
+                .where(
+                  and(
+                    eq(room.projectId, createdProject.id),
+                    like(room.handle, `${baseHandle}%`),
+                  ),
+                );
 
-				return createdProject;
-			});
+              let uniqueHandle = baseHandle;
+              if (existingRooms.length > 0) {
+                uniqueHandle = `${baseHandle}-${existingRooms.length + 1}`;
+              }
 
-			throw redirect(303, `/project/${newProject.handle}`);
-		} catch (error) {
-			if (error as Redirect) {
-				throw error; // Re-throw redirect
-			}
-			console.error("Project Creation error:", error);
-			return fail(500, {
-				form,
-				error: "An error occurred during project creation",
-			});
-		}
-	},
+              return tx.insert(room).values({
+                projectId: createdProject.id,
+                name: roomData.name,
+                handle: uniqueHandle,
+                colorCode: roomData.colorCode,
+              });
+            }),
+          );
+        }
+
+        return createdProject;
+      });
+
+      throw redirect(303, `/project/${newProject.handle}`);
+    } catch (error) {
+      if (error as Redirect) {
+        throw error; // Re-throw redirect
+      }
+      console.error("Project Creation error:", error);
+      return fail(500, {
+        form,
+        error: "An error occurred during project creation",
+      });
+    }
+  },
 } satisfies Actions;

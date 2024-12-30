@@ -126,9 +126,6 @@
       <Card.Title class="flex items-center">{project.name}</Card.Title>
       <Card.Description class="max-md:text-xs">
         Manage rooms for this project.
-        {#if rooms.length > 0}
-          <br />Click on a room its boxes.
-        {/if}
       </Card.Description>
     </div>
 
