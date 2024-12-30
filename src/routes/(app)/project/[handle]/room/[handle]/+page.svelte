@@ -146,7 +146,7 @@
       <div
         class="bg-secondary p-4 rounded-lg flex flex-col items-center justify-between gap-4"
       >
-        <div class="flex w-full justify-between">
+        <div class="flex max-md:flex-col w-full md:justify-between">
           <div class="max-md:mb-2 max-md:text-center">
             <p class="text-sm text-muted-foreground">Available QR Codes</p>
             <p class="text-2xl font-bold">{availableQrCodes || 0}</p>
@@ -265,7 +265,7 @@
             <Table.Head>QR Code</Table.Head>
             <!-- <Table.Head class="max-md:text-center">Boxes</Table.Head -->
 
-            <Table.Head>Items</Table.Head>
+            <Table.Head class="max-md:text-end">Items</Table.Head>
             <!-- <Table.Head>Contents</Table.Head> -->
             <!-- <Table.Head>Notes</Table.Head> -->
             <!-- <Table.Head>
@@ -291,14 +291,8 @@
                   {/if}
                 </div>
               </Table.Cell>
-              <!-- <Table.Cell>
-                                <span class="text-center md:text-start">
-                                    {data.room.boxes.length}
-                                </span>
-                            </Table.Cell> -->
-
               <Table.Cell>
-                <span class="text-center md:text-start">
+                <span class="max-md:text-end">
                   {#if box.items}
                     {box.items.length}
                   {:else}

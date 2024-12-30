@@ -1,8 +1,8 @@
 // src/routes/project/[handle]/room/[handle]/box/[id]/+page.server.ts
 import { error, redirect, fail, type Actions } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { box } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { box, qrCode } from "@db/schema";
+import { eq, like } from "drizzle-orm";
 import { downloadQrSchema } from "@routes/settings/zod";
 import { zod } from "sveltekit-superforms/adapters";
 import { superValidate } from "sveltekit-superforms";
@@ -16,6 +16,29 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   }
   if (!locals.user) {
     throw redirect(302, "/login");
+  }
+
+  // First check for a QR code with this box ID
+  const QRCODE = await db.query.qrCode.findFirst({
+    where: like(qrCode.url, `%/box/${params.id}%`),
+    with: {
+      room: {
+        with: {
+          project: true,
+        },
+      },
+    },
+  });
+
+  if (QRCODE) {
+    if (!QRCODE.isAssigned) {
+      // QR exists but no box yet - show placeholder page
+      return {
+        qrCode: QRCODE,
+        box: null,
+        form: await superValidate(zod(downloadQrSchema)),
+      };
+    }
   }
   console.log("LOADING BOX DATA");
   // First, get the box with its relationships
@@ -69,6 +92,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     form: await superValidate(zod(downloadQrSchema)),
   };
 };
+
 export const actions = {
   download: async ({ request }) => {
     const form = await superValidate(request, zod(downloadQrSchema));
