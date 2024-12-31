@@ -1,9 +1,10 @@
-// src/lib/server/db/migrate.ts
 import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import * as schema from "./schema";
 import env from "../../env";
 import pkg from "pg";
 const { Pool } = pkg;
+
 async function runMigrations() {
   const migrationPool = new Pool({
     connectionString: env.DATABASE_URL,
@@ -14,7 +15,8 @@ async function runMigrations() {
   });
 
   try {
-    drizzle(migrationPool, { schema });
+    const db = drizzle(migrationPool, { schema });
+    await migrate(db, { migrationsFolder: "drizzle" });
     console.log("Migrations completed");
   } catch (error) {
     console.error("Migration error:", error);
