@@ -9,7 +9,7 @@ const room = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     projectId: uuid("project_id")
       .notNull()
-      .references(() => project.id),
+      .references(() => project.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     handle: text("handle").notNull(),
     colorCode: text("color_code").notNull(),
