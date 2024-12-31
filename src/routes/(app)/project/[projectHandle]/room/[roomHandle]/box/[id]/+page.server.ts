@@ -41,7 +41,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
       return {
         qrCode: QRCODE,
         box: null,
-        form: await superValidate(zod(downloadQrSchema)),
+        downloadQrForm: await superValidate(zod(downloadQrSchema)),
+        createItemForm: await superValidate(zod(itemSchema)),
+        boxUpdateForm: await superValidate(zod(boxSchema)),
       };
     }
   }
@@ -150,23 +152,54 @@ export const actions = {
           message: "Room not found or does not belong to this project",
         });
       }
-      // Verify box exists in the room
-      const BOX = await db.query.box.findFirst({
-        where: and(eq(box.id, boxId), eq(box.roomId, ROOM.id)),
-        columns: {
-          id: true,
+      // First, try to find the QR code
+      const QRCODE = await db.query.qrCode.findFirst({
+        where: like(qrCode.url, `%/box/${boxId}%`),
+        with: {
+          room: true,
         },
       });
-      if (!BOX) {
+
+      if (!QRCODE) {
         return fail(404, {
           form,
-          message: "Box not found or does not belong to this room",
+          message: "No QR code found for this box",
         });
       }
+
+      // Create a box if it doesn't exist
+      let BOX = await db.query.box.findFirst({
+        where: eq(box.id, boxId),
+      });
+
+      if (!BOX) {
+        const [createdBox] = await db
+          .insert(box)
+          .values({
+            id: boxId,
+            roomId: QRCODE.room.id,
+            accessToken: crypto.randomUUID(), // Generate a unique access token
+          })
+          .returning();
+
+        BOX = createdBox;
+      }
+
       // Create the item
       const newItem = await db.transaction(async (tx) => {
+        // Update QR code if not already associated
+        if (!QRCODE.isAssigned) {
+          await tx
+            .update(qrCode)
+            .set({
+              boxId: BOX.id,
+              isAssigned: true,
+              url: QRCODE.url, // Or generate a new URL if needed
+            })
+            .where(eq(qrCode.id, QRCODE.id));
+        }
         const existingItem = await tx.query.item.findFirst({
-          where: and(eq(room.name, form.data.name), eq(item.boxId, BOX.id)),
+          where: and(eq(item.name, form.data.name), eq(item.boxId, BOX.id)),
         });
 
         if (existingItem && existingItem.quantity) {
@@ -192,10 +225,7 @@ export const actions = {
       });
       console.log("NEW ITEM", newItem);
       // Redirect to the box details page
-      throw redirect(
-        303,
-        `/project/${projectHandle}/room/${roomHandle}/box/${boxId}`,
-      );
+      return message(form, "Created Item!");
     } catch (error) {
       if (error as Redirect) {
         throw error; // Re-throw redirect

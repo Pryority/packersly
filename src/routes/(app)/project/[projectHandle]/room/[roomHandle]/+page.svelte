@@ -23,12 +23,13 @@
   import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
   import Download from "lucide-svelte/icons/download";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
+  import type { Room, Box } from "@db/schema";
 
   const {
     data,
   }: {
     data: {
-      room: any;
+      room: Room & { boxes: Box[] };
       availableQrCodes: number;
       createBoxForm: SuperValidated<Infer<BoxSchema>>;
       generateQrForm: SuperValidated<Infer<GenerateQrSchema>>;
@@ -39,7 +40,7 @@
   let sheetOpen = $state(false);
   let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
   const availableQrCodes = $derived(data.availableQrCodes);
-
+  const room = $state(data.room);
   const createBoxForm = superForm(data.createBoxForm, {
     id: "create-box-form",
     validators: zodClient(boxSchema),
@@ -117,9 +118,11 @@
     }
   }
 
+  $effect(() => {});
+
   $effect(() => {
     if (data.room.boxes) {
-      data.room.boxes.forEach((box: BoxWithRelations) => {
+      data.room.boxes.forEach((box: Box) => {
         if (box.qrCode?.url && qrCanvases[box.id]) {
           QRCode.toCanvas(qrCanvases[box.id], box.qrCode.url, {
             width: 256,

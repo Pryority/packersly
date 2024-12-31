@@ -1,8 +1,8 @@
 import { pgTable, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import room from "./room";
-import item from "./item";
-import qrCode from "./qrCode";
+import item, { type Item } from "./item";
+import qrCode, { type QrCode } from "./qrCode";
 
 const box = pgTable("box", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -30,5 +30,5 @@ export const boxRelations = relations(box, ({ one, many }) => ({
   }),
 }));
 
-export type Box = typeof box.$inferSelect;
+export type Box = typeof box.$inferSelect & { items: Item[]; qrCode: QrCode };
 export default box;

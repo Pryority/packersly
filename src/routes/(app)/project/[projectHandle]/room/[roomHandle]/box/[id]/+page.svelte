@@ -120,6 +120,7 @@
     id: "create-item-form",
     validators: zodClient(itemSchema),
     resetForm: true,
+    invalidateAll: true,
     onSubmit: async ({ formData, cancel }) => {
       const itemName = formData.get("name");
       console.log(itemName);
@@ -139,9 +140,12 @@
       }
     },
     onResult: ({ result, formElement }) => {
-      if (result.type === "redirect" && result.status === 303) {
+      if (result.type === "success") {
+        // Close dialog/sheet
         createDialogOpen = false;
         createSheetOpen = false;
+
+        // Reset form
         formElement.reset();
       }
     },
@@ -163,7 +167,7 @@
         formElement.reset();
 
         // Invalidate current page to refresh data
-        await invalidate((url) => url.pathname === window.location.pathname);
+        // await invalidate((url) => url.pathname === window.location.pathname);
 
         // Optional: show a toast notification
         // toast.success(result.data?.message);
@@ -487,15 +491,17 @@
 <CreateItemDialog open={createDialogOpen} form={createItemForm} />
 <CreateItemSheet open={createSheetOpen} form={createItemForm} />
 
-<UpdateBoxDialog
-  boxId={box.id}
-  {box}
-  open={updateDialogOpen}
-  form={boxUpdateForm}
-/>
-<UpdateBoxSheet
-  boxId={box.id}
-  {box}
-  open={updateSheetOpen}
-  form={boxUpdateForm}
-/>
+{#if box}
+  <UpdateBoxDialog
+    boxId={box.id}
+    {box}
+    open={updateDialogOpen}
+    form={boxUpdateForm}
+  />
+  <UpdateBoxSheet
+    boxId={box.id}
+    {box}
+    open={updateSheetOpen}
+    form={boxUpdateForm}
+  />
+{/if}
