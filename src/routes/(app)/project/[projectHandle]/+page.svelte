@@ -20,7 +20,6 @@
   import { goto } from "$app/navigation";
   import type { ProjectBasic, RoomWithRelations } from "@types";
   import { cn, getTotalItemsOfBoxes } from "@utils";
-  import type { ActionResult } from "@sveltejs/kit";
   import UpdateProjectDialog from "@components/projects/UpdateProjectDialog.svelte";
   import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
   import UpdateProjectSheet from "@components/projects/UpdateProjectSheet.svelte";
@@ -50,31 +49,18 @@
   let updateDialogOpen = $state(false);
   let createSheetOpen = $state(false);
   let updateSheetOpen = $state(false);
-  let submittingRoom = $state(false);
-  let submittingUpdate = $state(false);
 
-  const form = superForm(roomFormData, {
-    id: "room-form",
+  const createRoomForm = superForm(roomFormData, {
+    id: "create-room-form",
     validators: zodClient(roomSchema),
     dataType: "json",
     taintedMessage: null,
-    onSubmit: ({ cancel }) => {
-      submittingRoom = true;
-      return async ({ result }: { result: ActionResult }) => {
-        if (result.type === "error" || result.type === "failure") {
-          submittingRoom = false;
-          createDialogOpen = false;
-          createSheetOpen = false;
-          cancel();
-        }
-        // Don't handle redirect here - let SvelteKit handle it
-      };
-    },
-    onError: () => {
-      submittingRoom = false;
-    },
-    onResult: () => {
-      submittingRoom = false;
+    onResult: ({ result, cancel }) => {
+      if (result.type === "redirect" && result.status === 303) {
+        createDialogOpen = false;
+        createSheetOpen = false;
+      }
+      cancel();
     },
   });
 
@@ -83,23 +69,12 @@
     validators: zodClient(projectSchema),
     dataType: "json",
     taintedMessage: null,
-    onSubmit: ({ cancel }) => {
-      submittingUpdate = true;
-      return async ({ result }: { result: ActionResult }) => {
-        if (result.type === "error" || result.type === "failure") {
-          submittingUpdate = false;
-          cancel();
-        }
-        // Don't handle redirect here - let SvelteKit handle it
-      };
-    },
-    onError: () => {
-      submittingUpdate = false;
-    },
-    onResult: () => {
-      submittingUpdate = false;
-      updateDialogOpen = false;
-      updateSheetOpen = false;
+    onResult: ({ result, cancel }) => {
+      if (result.type === "redirect" && result.status === 303) {
+        updateDialogOpen = false;
+        updateSheetOpen = false;
+      }
+      cancel();
     },
   });
 
@@ -260,19 +235,17 @@
   Create a Room
 </Button>
 
-<CreateRoomDialog open={createDialogOpen} {form} submitting={submittingRoom} />
-<CreateRoomSheet open={createSheetOpen} {form} submitting={submittingRoom} />
+<CreateRoomDialog open={createDialogOpen} form={createRoomForm} />
+<CreateRoomSheet open={createSheetOpen} form={createRoomForm} />
 
 <UpdateProjectDialog
   projectId={project.id}
   open={updateDialogOpen}
   form={projectUpdateForm}
-  submitting={submittingUpdate}
 />
 
 <UpdateProjectSheet
   projectId={project.id}
   open={updateSheetOpen}
   form={projectUpdateForm}
-  submitting={submittingUpdate}
 />

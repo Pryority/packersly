@@ -1,29 +1,37 @@
-<!-- src/lib/components/projects/UpdateProjectSheet.svelte -->
+<!-- src/lib/components/projects/UpdateBoxSheet.svelte -->
 <script lang="ts">
   import * as Sheet from "@components/ui/sheet";
-  import UpdateProjectForm from "@components/projects/UpdateProjectForm.svelte";
+  import UpdateBoxForm from "@components/projects/UpdateBoxForm.svelte";
   import type { SuperForm } from "sveltekit-superforms";
   import type { Infer } from "sveltekit-superforms";
-  import type { ProjectSchema } from "@routes/settings/zod";
+  import type { BoxSchema } from "@routes/settings/zod";
   let {
-    projectId,
+    boxId,
     open = $bindable(false),
     form,
+    box,
   }: {
-    projectId: string;
+    boxId: string;
     open: boolean;
-    form: SuperForm<Infer<ProjectSchema>>;
+    form: SuperForm<Infer<BoxSchema>>;
+    box: {
+      items: Array<{
+        id: string;
+        name: string;
+        quantity: number;
+      }>;
+    };
   } = $props();
 </script>
 
 <Sheet.Root bind:open onOpenChange={(isOpen) => !isOpen}>
   <Sheet.Content side="bottom" class="md:hidden max-h-[90vh]  overflow-y-auto">
     <Sheet.Header class="mb-4">
-      <Sheet.Title>Update Project</Sheet.Title>
+      <Sheet.Title>Update Box</Sheet.Title>
       <Sheet.Description class="text-xs">
-        Update information about this moving project.
+        Change the items in this box.
       </Sheet.Description>
     </Sheet.Header>
-    <UpdateProjectForm {form} {projectId} />
+    <UpdateBoxForm {form} {box} {boxId} />
   </Sheet.Content>
 </Sheet.Root>

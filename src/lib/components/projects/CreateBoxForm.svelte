@@ -23,7 +23,10 @@
   function addItem() {
     formData.update(($formData) => ({
       ...$formData,
-      items: [...($formData.items || []), { name: "", quantity: 1 }],
+      items: [
+        ...($formData.items || []),
+        { id: crypto.randomUUID(), name: "", quantity: 1 },
+      ],
     }));
   }
 
@@ -38,7 +41,7 @@
     if ($formData.items?.length === 0) {
       formData.update(($formData) => ({
         ...$formData,
-        items: [{ name: "", quantity: 1 }],
+        items: [{ id: crypto.randomUUID(), name: "", quantity: 1 }],
       }));
     }
   });

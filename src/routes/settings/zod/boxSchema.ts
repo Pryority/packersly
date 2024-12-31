@@ -3,10 +3,11 @@ import { z } from "zod";
 import itemSchema from "./itemSchema";
 
 const boxSchema = z.object({
+  boxId: z.string().uuid(),
   items: z
     .array(itemSchema)
     .optional()
-    .default([{ name: "", quantity: 1 }]),
+    .default([{ id: "", name: "", quantity: 1 }]),
 });
 
 export type BoxSchema = typeof boxSchema;

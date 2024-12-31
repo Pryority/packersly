@@ -1,18 +1,27 @@
-<!-- src/lib/components/projects/UpdateProjectDialog.svelte -->
+<!-- src/lib/components/projects/UpdateBoxDialog.svelte -->
 <script lang="ts">
   import * as Dialog from "@components/ui/dialog";
-  import UpdateProjectForm from "@components/projects/UpdateProjectForm.svelte";
   import type { SuperForm } from "sveltekit-superforms";
   import type { Infer } from "sveltekit-superforms";
-  import type { ProjectSchema } from "@routes/settings/zod";
+  import type { BoxSchema } from "@routes/settings/zod";
+  import UpdateBoxForm from "./UpdateBoxForm.svelte";
+
   let {
-    projectId,
+    boxId,
     open = $bindable(false),
     form,
+    box,
   }: {
-    projectId: string;
+    boxId: string;
     open: boolean;
-    form: SuperForm<Infer<ProjectSchema>>;
+    form: SuperForm<Infer<BoxSchema>>;
+    box: {
+      items: Array<{
+        id: string;
+        name: string;
+        quantity: number;
+      }>;
+    };
   } = $props();
 </script>
 
@@ -31,7 +40,7 @@
             Update information about this moving project.
           </Dialog.Description>
         </Dialog.Header>
-        <UpdateProjectForm {form} {projectId} />
+        <UpdateBoxForm {form} {box} {boxId} />
         <Dialog.Close class="absolute right-4 top-4" />
       </Dialog.Content>
     </Dialog.Portal>

@@ -8,13 +8,12 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { box, item, project, qrCode, room } from "@db/schema";
-import { and, eq, like } from "drizzle-orm";
-import { downloadQrSchema, itemSchema } from "@routes/settings/zod";
+import { and, eq, like, notInArray } from "drizzle-orm";
+import { boxSchema, downloadQrSchema, itemSchema } from "@routes/settings/zod";
 import { zod } from "sveltekit-superforms/adapters";
-import { superValidate } from "sveltekit-superforms";
+import { message, superValidate } from "sveltekit-superforms";
 import db from "@db";
 import { validate as validateUUID } from "uuid";
-
 export const load: PageServerLoad = async ({ locals, params, url }) => {
   console.log("Box ID param:", params.id);
   if (!validateUUID(params.id)) {
@@ -97,6 +96,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     },
     downloadQrForm: await superValidate(zod(downloadQrSchema)),
     createItemForm: await superValidate(zod(itemSchema)),
+    boxUpdateForm: await superValidate(zod(boxSchema)),
   };
 };
 
@@ -165,6 +165,19 @@ export const actions = {
       }
       // Create the item
       const newItem = await db.transaction(async (tx) => {
+        const existingItem = await tx.query.item.findFirst({
+          where: and(eq(room.name, form.data.name), eq(item.boxId, BOX.id)),
+        });
+
+        if (existingItem && existingItem.quantity) {
+          const [updatedItem] = await tx
+            .update(item)
+            .set({ quantity: existingItem.quantity + form.data.quantity })
+            .where(eq(item.id, existingItem.id))
+            .returning();
+          console.log("UPDATED EXISTING ITEM QUANTITY", updatedItem);
+          return updatedItem;
+        }
         const itemId = crypto.randomUUID();
         const [createdItem] = await tx
           .insert(item)
@@ -192,6 +205,92 @@ export const actions = {
         form,
         message: "An error occurred during item creation",
       });
+    }
+  },
+  "update-box": async ({ request, locals, url }) => {
+    if (!locals.user) throw error(401, "Unauthorized");
+    const form = await superValidate(request, zod(boxSchema));
+    console.log("Form data:", form.data);
+    if (!form.valid) return fail(400, { form });
+    const boxId = form.data.boxId;
+    if (!boxId) return fail(400, { form, message: "Box ID required" });
+
+    try {
+      return await db.transaction(async (tx) => {
+        const BOX = await tx.query.box.findFirst({
+          where: eq(box.id, boxId),
+          with: {
+            items: true,
+            room: {
+              with: {
+                project: {
+                  columns: { userId: true },
+                },
+              },
+            },
+          },
+        });
+
+        if (!BOX || BOX.room?.project.userId !== locals.user?.id) {
+          return fail(403, { message: "Box not found or unauthorized" });
+        }
+
+        console.log("Existing box items:", BOX.items);
+        console.log("Form items:", form.data.items);
+
+        // Update existing items with ID matches
+        for (const formItem of form.data.items) {
+          if (formItem.id) {
+            const result = await tx
+              .update(item)
+              .set({
+                name: formItem.name,
+                quantity: formItem.quantity,
+              })
+              .where(eq(item.id, formItem.id))
+              .returning();
+            console.log("Update result:", result);
+            // const p1 = tx
+            //   .update(item)
+            //   .set({
+            //     name: formItem.name,
+            //     quantity: formItem.quantity,
+            //   })
+            //   .where(eq(item.id, formItem.id))
+            //   .prepare("p1");
+            // const result = await p1.execute({ id: 1 });
+            // console.log("SQL Query:", result);
+          } else {
+            console.log("Inserting new item:", formItem);
+            await tx.insert(item).values({
+              id: crypto.randomUUID(),
+              boxId: BOX.id,
+              name: formItem.name,
+              quantity: formItem.quantity,
+            });
+          }
+        }
+
+        // Delete removed items
+        const formItemIds = form.data.items.map((i) => i.id).filter(Boolean);
+        const deleteResult = await tx
+          .delete(item)
+          .where(
+            and(
+              eq(item.boxId, BOX.id),
+              notInArray(item.id, formItemIds as string[]),
+            ),
+          )
+          .returning();
+        console.log("Delete result:", deleteResult);
+
+        return message(form, "Updated Box!");
+      });
+    } catch (error) {
+      console.error("Full error:", error);
+      if (error as Redirect) throw error;
+      console.error("Box Update error:", error);
+      return fail(500, { form, error: "Update failed" });
     }
   },
   download: async ({ request }) => {

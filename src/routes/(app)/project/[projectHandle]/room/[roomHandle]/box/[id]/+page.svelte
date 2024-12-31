@@ -1,16 +1,21 @@
 <!-- src/routes/project/[handle]/room/[handle]/box/[id]/+page.svelte -->
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { page } from "$app/stores";
   import Download from "lucide-svelte/icons/download";
   import { Button } from "@components/ui/button/index.js";
+  import * as DropdownMenu from "@components/ui/dropdown-menu";
   import * as Card from "@components/ui/card/index.js";
   import QRCode from "qrcode";
+  import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
   import * as Table from "@components/ui/table/index.js";
   import * as Form from "@components/ui/form";
   import type { Box } from "@db/schema/box";
   import {
+    boxSchema,
     downloadQrSchema,
     itemSchema,
+    type BoxSchema,
     type DownloadQrSchema,
     type ItemSchema,
   } from "@routes/settings/zod";
@@ -25,12 +30,19 @@
   import PlusCircle from "lucide-svelte/icons/plus-circle";
   import CreateItemSheet from "@components/projects/CreateItemSheet.svelte";
   import CreateItemDialog from "@components/projects/CreateItemDialog.svelte";
+  import UpdateBoxDialog from "@components/projects/UpdateBoxDialog.svelte";
+  import UpdateBoxSheet from "@components/projects/UpdateBoxSheet.svelte";
+  import type { z } from "zod";
   import { invalidate } from "$app/navigation";
 
-  let submitting = $state(false);
   let qrCanvas = $state<HTMLCanvasElement>();
   let createDialogOpen = $state(false);
   let createSheetOpen = $state(false);
+  let updateDialogOpen = $state(false);
+  let updateSheetOpen = $state(false);
+
+  const urlChunks = $state($page.url.pathname.split("/"));
+  const boxId = $derived(urlChunks[urlChunks.length - 1]);
 
   const { data } = $props<{
     data: {
@@ -53,16 +65,17 @@
       };
       downloadQrForm: SuperValidated<Infer<DownloadQrSchema>>;
       createItemForm: SuperValidated<Infer<ItemSchema>>;
+      updateBoxForm: SuperValidated<Infer<BoxSchema>>;
     };
   }>();
   let { box } = $state(data);
+
   const downloadQrForm = superForm(data.downloadQrForm, {
     id: "download-qr",
     validators: zodClient(downloadQrSchema),
     dataType: "json",
     taintedMessage: null,
     onSubmit: ({ cancel }) => {
-      submitting = true;
       return async ({ result }: { result: ActionResult }) => {
         if (result.type === "success") {
           try {
@@ -93,25 +106,38 @@
           } catch (error) {
             console.error("Download error:", error);
           } finally {
-            submitting = false;
             cancel();
           }
         } else {
-          submitting = false;
           cancel();
         }
       };
     },
-    onError: () => {
-      submitting = false;
-    },
   });
-  const { form: formData, errors } = downloadQrForm;
+  const { form: formData, errors, submitting: downloadingQr } = downloadQrForm;
 
   const createItemForm = superForm(data.createItemForm, {
     id: "create-item-form",
     validators: zodClient(itemSchema),
     resetForm: true,
+    onSubmit: async ({ formData, cancel }) => {
+      const itemName = formData.get("name");
+      console.log(itemName);
+      // Check if item exists
+      const response = await fetch(
+        `/api/box/${boxId}/items/check?name=${itemName}`,
+      );
+      const exists = await response.json();
+
+      if (
+        exists &&
+        !confirm(
+          `An item named "${itemName}" already exists. The quantity will be added to it. Continue?`,
+        )
+      ) {
+        cancel();
+      }
+    },
     onResult: ({ result, formElement }) => {
       if (result.type === "redirect" && result.status === 303) {
         createDialogOpen = false;
@@ -121,14 +147,56 @@
     },
   });
 
+  const boxUpdateForm = superForm(data.boxUpdateForm, {
+    id: "box-update-form",
+    validators: zodClient(boxSchema),
+    resetForm: true,
+    dataType: "json",
+    invalidateAll: true,
+    onResult: async ({ result, formElement }) => {
+      if (result.type === "success") {
+        // Close dialog/sheet
+        updateDialogOpen = false;
+        updateSheetOpen = false;
+
+        // Reset form
+        formElement.reset();
+
+        // Invalidate current page to refresh data
+        await invalidate((url) => url.pathname === window.location.pathname);
+
+        // Optional: show a toast notification
+        // toast.success(result.data?.message);
+      }
+    },
+  });
+
   function openCreateForm() {
     const isMobile = window.innerWidth < 768;
     createDialogOpen = !isMobile;
     createSheetOpen = isMobile;
   }
+  function openUpdateForm() {
+    const isMobile = window.innerWidth < 768;
+    updateDialogOpen = !isMobile;
+    updateSheetOpen = isMobile;
+  }
 
   $effect(() => {
     box = data.box;
+  });
+
+  const { form: boxUpdateFormData } = boxUpdateForm;
+
+  $effect(() => {
+    if (box?.items) {
+      $boxUpdateFormData = {
+        items: box.items.map((item: z.infer<typeof itemSchema>) => ({
+          name: item.name,
+          quantity: item.quantity,
+        })),
+      };
+    }
   });
 
   $effect(() => {
@@ -169,153 +237,185 @@
   <Card.Root class="m-4 md:w-2/3">
     <Card.Header class="space-y-8">
       <div class="flex flex-col gap-1">
-        <div class="flex max-md:flex-col md:justify-between">
-          <Card.Title>
-            {#if data.box}
-              Box Contents
-            {:else if data.qrCode?.isAssigned}
-              Box (Assigned)
-            {:else if data.qrCode}
-              Box (Unassigned)
-            {/if}
-          </Card.Title>
-
-          {#if data.qrCode || data.box?.qrCode}
-            <Badge
-              class="w-fit max-md:hidden max-md:mt-1"
-              style={`background-color: ${data.box?.room.colorCode ?? data.qrCode?.room.colorCode}`}
-            >
-              #{data.box?.qrCode?.id ?? data.qrCode?.id}
-            </Badge>
-          {/if}
-        </div>
-
-        <Card.Description>
-          {#if data.box}
-            View and manage items stored in this box.
-          {:else if data.qrCode?.isAssigned}
-            This QR code has been assigned to a box but items haven't been added
-            yet.
-          {:else if data.qrCode}
-            This QR code is ready to be assigned and used. Download the code if
-            you haven't already and stick it on the box you want, add items to
-            track its contents.
-          {/if}
-        </Card.Description>
-
-        {#if data.qrCode || data.box?.qrCode}
-          <Badge
-            class="w-fit md:hidden max-md:mt-1"
-            style={`background-color: ${data.box?.room.colorCode ?? data.qrCode?.room.colorCode}`}
-          >
-            #{data.box?.qrCode?.id ?? data.qrCode?.id}
-          </Badge>
-        {/if}
-      </div>
-      {#if data.box?.qrCode || data.qrCode}
-        <div class="mt-4 flex flex-col items-center gap-2">
-          <div
-            class="w-64 h-64 rounded-lg flex items-center justify-center"
-            style={`border: 8px solid ${data.box?.room.colorCode ?? data.qrCode.room.colorCode}`}
-          >
-            {#if data.box?.qrCode?.url || data.qrCode?.url}
-              <canvas bind:this={qrCanvas} class="p-3 object-contain"></canvas>
-            {/if}
-          </div>
-          <div class="flex flex-col items-center gap-2 mt-2">
-            <span class="text-sm text-muted-foreground">
-              {#if data.qrCode?.isAssigned}
-                Scan to view box contents
-              {:else}
-                Put QR Code on a box and add items to track.
+        <div class="flex max-md:flex-col md:justify-between md:items-center">
+          <div class="flex justify-between items-center">
+            <Card.Title>
+              {#if data.box}
+                Box Contents
+              {:else if data.qrCode?.isAssigned}
+                Box (Assigned)
+              {:else if data.qrCode}
+                Box (Unassigned)
               {/if}
-            </span>
-            <form
-              method="POST"
-              action="?/download"
-              use:enhance={({ cancel }) => {
-                submitting = true;
-                return async () => {
-                  try {
-                    const response = await fetch("/api/qr-code/download/svg", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        qrCode: $formData.qrCode,
-                        colorCode: $formData.colorCode,
-                      }),
-                    });
+            </Card.Title>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild let:builder>
+                <Button
+                  builders={[builder]}
+                  size="icon"
+                  variant="outline"
+                  class="h-8 w-8 md:hidden"
+                >
+                  <EllipsisVertical class="h-4 w-4" />
+                  <span class="sr-only">Open Edit Box Menu</span>
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content align="end">
+                <DropdownMenu.Item on:click={openUpdateForm}
+                  >Edit Box</DropdownMenu.Item
+                >
+                <DropdownMenu.Separator />
+                <DropdownMenu.Item
+                  class="text-destructive focus:text-destructive"
+                >
+                  Delete Box
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+          </div>
 
-                    if (!response.ok) throw new Error("Download failed");
-
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "box-qr-code.svg";
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    a.remove();
-                  } catch (error) {
-                    console.error("Download error:", error);
-                  } finally {
-                    submitting = false;
-                    cancel();
-                  }
-                };
-              }}
-            >
-              <Form.Field form={downloadQrForm} name="qrCode">
-                <Form.Control let:attrs>
-                  <input
-                    type="hidden"
-                    bind:value={$formData.qrCode}
-                    {...attrs}
-                  />
-                </Form.Control>
-              </Form.Field>
-
-              <Form.Field form={downloadQrForm} name="colorCode">
-                <Form.Control let:attrs>
-                  <input
-                    type="hidden"
-                    bind:value={$formData.colorCode}
-                    {...attrs}
-                  />
-                </Form.Control>
-              </Form.Field>
-
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                class="flex items-center gap-2"
+          <div class="flex items-center gap-2">
+            {#if data.qrCode || data.box?.qrCode}
+              <Badge
+                class="w-fit max-md:hidden"
+                style={`background-color: ${data.box?.room.colorCode ?? data.qrCode?.room.colorCode}`}
               >
-                <Download class="h-4 w-4" />
-                {submitting ? "Downloading..." : "Download QR Code"}
-              </Button>
-            </form>
-
-            <!-- Show any form errors -->
-            {#if $errors.qrCode || $errors.colorCode}
-              <span class="text-destructive text-sm">
-                {$errors.qrCode?.[0] || $errors.colorCode?.[0]}
-              </span>
+                #{data.box?.qrCode?.id ?? data.qrCode?.id}
+              </Badge>
             {/if}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild let:builder>
+                <Button
+                  builders={[builder]}
+                  size="icon"
+                  variant="outline"
+                  class="h-10 w-10 max-md:hidden"
+                >
+                  <EllipsisVertical class="h-4 w-4" />
+                  <span class="sr-only">Open Edit Box Menu</span>
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content align="end">
+                <DropdownMenu.Item on:click={openUpdateForm}
+                  >Edit Box</DropdownMenu.Item
+                >
+                <DropdownMenu.Separator />
+                <DropdownMenu.Item
+                  class="text-destructive focus:text-destructive"
+                >
+                  Delete Box
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
           </div>
         </div>
-      {/if}
-    </Card.Header>
+        {#if data.box?.qrCode || data.qrCode}
+          <div class="mt-4 flex flex-col items-center gap-2">
+            <div
+              class="w-64 h-64 rounded-lg flex items-center justify-center"
+              style={`border: 8px solid ${data.box?.room.colorCode ?? data.qrCode.room.colorCode}`}
+            >
+              {#if data.box?.qrCode?.url || data.qrCode?.url}
+                <canvas bind:this={qrCanvas} class="p-3 object-contain"
+                ></canvas>
+              {/if}
+            </div>
+            <div class="flex flex-col items-center gap-2 mt-2">
+              <span class="text-sm text-muted-foreground">
+                {#if data.qrCode?.isAssigned}
+                  Scan to view box contents
+                {:else}
+                  Put QR Code on a box and add items to track.
+                {/if}
+              </span>
+              <form
+                method="POST"
+                action="?/download"
+                use:enhance={({ cancel }) => {
+                  return async () => {
+                    try {
+                      const response = await fetch(
+                        "/api/qr-code/download/svg",
+                        {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            qrCode: $formData.qrCode,
+                            colorCode: $formData.colorCode,
+                          }),
+                        },
+                      );
+
+                      if (!response.ok) throw new Error("Download failed");
+
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "box-qr-code.svg";
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      a.remove();
+                    } catch (error) {
+                      console.error("Download error:", error);
+                    } finally {
+                      cancel();
+                    }
+                  };
+                }}
+              >
+                <Form.Field form={downloadQrForm} name="qrCode">
+                  <Form.Control let:attrs>
+                    <input
+                      type="hidden"
+                      bind:value={$formData.qrCode}
+                      {...attrs}
+                    />
+                  </Form.Control>
+                </Form.Field>
+
+                <Form.Field form={downloadQrForm} name="colorCode">
+                  <Form.Control let:attrs>
+                    <input
+                      type="hidden"
+                      bind:value={$formData.colorCode}
+                      {...attrs}
+                    />
+                  </Form.Control>
+                </Form.Field>
+
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  class="flex items-center gap-2"
+                >
+                  <Download class="h-4 w-4" />
+                  {$downloadingQr ? "Downloading..." : "Download QR Code"}
+                </Button>
+              </form>
+
+              <!-- Show any form errors -->
+              {#if $errors.qrCode || $errors.colorCode}
+                <span class="text-destructive text-sm">
+                  {$errors.qrCode?.[0] || $errors.colorCode?.[0]}
+                </span>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div></Card.Header
+    >
     <Card.Content>
       {#if data.box?.items?.length > 0}
         <Table.Root>
           <Table.Header>
             <Table.Row>
               <Table.Head>Item</Table.Head>
-              <Table.Head>Quantity</Table.Head>
+              <Table.Head class="text-end">Quantity</Table.Head>
               <!-- <Table.Head>
                             <span class="sr-only">Actions</span>
                         </Table.Head> -->
@@ -327,7 +427,7 @@
                 <Table.Cell class="font-medium">
                   {item.name}
                 </Table.Cell>
-                <Table.Cell>{item.quantity}</Table.Cell>
+                <Table.Cell class="text-end">{item.quantity}</Table.Cell>
                 <!-- <Table.Cell>
                                 <DropdownMenu.Root>
                                     <DropdownMenu.Trigger asChild let:builder>
@@ -387,16 +487,15 @@
 <CreateItemDialog open={createDialogOpen} form={createItemForm} />
 <CreateItemSheet open={createSheetOpen} form={createItemForm} />
 
-<!-- <UpdateBoxDialog
-  projectId={project.id}
+<UpdateBoxDialog
+  boxId={box.id}
+  {box}
   open={updateDialogOpen}
-  form={projectUpdateForm}
-  submitting={submittingUpdate}
+  form={boxUpdateForm}
 />
-
 <UpdateBoxSheet
-  projectId={project.id}
+  boxId={box.id}
+  {box}
   open={updateSheetOpen}
-  form={projectUpdateForm}
-  submitting={submittingUpdate}
-/> -->
+  form={boxUpdateForm}
+/>

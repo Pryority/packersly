@@ -9,7 +9,7 @@ import {
 import type { PageServerLoad } from "./$types";
 import db from "@db";
 import { project, room, user } from "@db/schema";
-import { and, eq, like } from "drizzle-orm";
+import { and, eq, like, ne } from "drizzle-orm";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { projectSchema, roomSchema } from "@routes/settings/zod";
@@ -176,68 +176,67 @@ export const actions = {
     }
   },
   "update-project": async ({ request, locals, params }) => {
-    if (!locals.user) {
-      throw error(401, "Unauthorized");
-    }
+    if (!locals.user) throw error(401, "Unauthorized");
+    const userId = locals.user.id;
 
     const form = await superValidate(request, zod(projectSchema));
-    if (!form.valid) {
-      return fail(400, { form });
-    }
+    if (!form.valid) return fail(400, { form });
 
     const { projectHandle } = params;
-    console.log(params);
-
-    if (!projectHandle) {
-      return fail(400, {
-        form,
-        message: "Project, room, and box details are required",
-      });
-    }
+    if (!projectHandle)
+      return fail(400, { form, message: "Project handle required" });
 
     try {
-      const USER = await db.query.user.findFirst({
-        where: eq(user.id, locals.user.id),
-      });
+      return await db.transaction(async (tx) => {
+        const USER = await tx.query.user.findFirst({
+          where: eq(user.id, userId),
+        });
+        if (!USER) return fail(404, { message: "User not found" });
 
-      if (!USER) {
-        return fail(404, { message: "User not found" });
-      }
+        const existingProject = await tx.query.project.findFirst({
+          where: and(
+            eq(project.handle, projectHandle),
+            eq(project.userId, USER.id),
+          ),
+        });
+        if (!existingProject)
+          return fail(404, { message: "Project not found" });
 
-      // Verify project ownership and get project data
-      const existingProject = await db.query.project.findFirst({
-        where: and(
-          eq(project.handle, projectHandle),
-          eq(project.userId, USER.id),
-        ),
-      });
+        const baseHandle = generateHandle(form.data.name);
+        const existingProjects = await tx
+          .select({ handle: project.handle })
+          .from(project)
+          .where(
+            and(
+              eq(project.userId, USER.id),
+              like(project.handle, `${baseHandle}%`),
+              ne(project.id, existingProject.id),
+            ),
+          );
 
-      if (!existingProject) {
-        return fail(404, { message: "Project not found or unauthorized" });
-      }
+        const uniqueHandle =
+          existingProjects.length > 0
+            ? `${baseHandle}-${existingProjects.length + 1}`
+            : baseHandle;
 
-      await db.transaction(async (tx) => {
-        // Update project details
         await tx
           .update(project)
           .set({
             name: form.data.name,
-            handle: generateHandle(form.data.name),
+            handle: uniqueHandle,
             fromAddress: form.data.fromAddress,
             toAddress: form.data.toAddress,
           })
-          .where(eq(project.handle, projectHandle));
+          .where(eq(project.id, existingProject.id));
 
-        // Delete existing rooms using project.id, not handle
         await tx.delete(room).where(eq(room.projectId, existingProject.id));
 
-        // Insert updated rooms using project.id
         if (form.data.rooms?.length) {
           await Promise.all(
             form.data.rooms.map((roomData) =>
               tx.insert(room).values({
-                id: crypto.randomUUID(), // Add unique ID for new rooms
-                projectId: existingProject.id, // Use the project's ID
+                id: crypto.randomUUID(),
+                projectId: existingProject.id,
                 name: roomData.name,
                 handle: generateHandle(roomData.name),
                 colorCode: roomData.colorCode,
@@ -245,19 +244,13 @@ export const actions = {
             ),
           );
         }
-      });
 
-      // Redirect to the new project handle path
-      throw redirect(303, `/project/${generateHandle(form.data.name)}`);
-    } catch (error) {
-      if (error as Redirect) {
-        throw error;
-      }
-      console.error("Project Update error:", error);
-      return fail(500, {
-        form,
-        error: "An error occurred while updating the project",
+        throw redirect(303, `/project/${uniqueHandle}`);
       });
+    } catch (error) {
+      if (error as Redirect) throw error;
+      console.error("Project Update error:", error);
+      return fail(500, { form, error: "Update failed" });
     }
   },
 } satisfies Actions;
