@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
   const projectWithRooms = await db.query.project.findFirst({
     where: and(
-      eq(project.handle, params.handle),
+      eq(project.handle, params.projectHandle),
       eq(project.userId, locals.user.id),
     ),
     columns: {
@@ -175,23 +175,29 @@ export const actions = {
       });
     }
   },
-  "update-project": async (event) => {
-    if (!event.locals.user) {
+  "update-project": async ({ request, locals, params }) => {
+    if (!locals.user) {
       throw error(401, "Unauthorized");
     }
 
-    const form = await superValidate(event.request, zod(projectSchema));
-    const urlPathname = event.url.pathname;
-    const pathSegments = urlPathname.split("/");
-    const projectHandle = pathSegments[2];
-
+    const form = await superValidate(request, zod(projectSchema));
     if (!form.valid) {
       return fail(400, { form });
     }
 
+    const { projectHandle } = params;
+    console.log(params);
+
+    if (!projectHandle) {
+      return fail(400, {
+        form,
+        message: "Project, room, and box details are required",
+      });
+    }
+
     try {
       const USER = await db.query.user.findFirst({
-        where: eq(user.id, event.locals.user.id),
+        where: eq(user.id, locals.user.id),
       });
 
       if (!USER) {

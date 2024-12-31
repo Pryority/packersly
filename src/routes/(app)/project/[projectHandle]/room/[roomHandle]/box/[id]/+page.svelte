@@ -10,7 +10,9 @@
   import type { Box } from "@db/schema/box";
   import {
     downloadQrSchema,
+    itemSchema,
     type DownloadQrSchema,
+    type ItemSchema,
   } from "@routes/settings/zod";
   import {
     type SuperValidated,
@@ -21,6 +23,14 @@
   import type { ActionResult } from "@sveltejs/kit";
   import Badge from "@components/ui/badge/badge.svelte";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
+  import CreateItemSheet from "@components/projects/CreateItemSheet.svelte";
+  import CreateItemDialog from "@components/projects/CreateItemDialog.svelte";
+  import { invalidate } from "$app/navigation";
+
+  let submitting = $state(false);
+  let qrCanvas = $state<HTMLCanvasElement>();
+  let createDialogOpen = $state(false);
+  let createSheetOpen = $state(false);
 
   const { data } = $props<{
     data: {
@@ -41,11 +51,12 @@
         isAssigned: boolean;
         room: { colorCode: string };
       };
-      form: SuperValidated<Infer<DownloadQrSchema>>;
+      downloadQrForm: SuperValidated<Infer<DownloadQrSchema>>;
+      createItemForm: SuperValidated<Infer<ItemSchema>>;
     };
   }>();
-  const { box } = data;
-  const form = superForm(data.form, {
+  let { box } = $state(data);
+  const downloadQrForm = superForm(data.downloadQrForm, {
     id: "download-qr",
     validators: zodClient(downloadQrSchema),
     dataType: "json",
@@ -95,10 +106,30 @@
       submitting = false;
     },
   });
+  const { form: formData, errors } = downloadQrForm;
 
-  const { form: formData, errors } = form;
-  let submitting = $state(false);
-  let qrCanvas = $state<HTMLCanvasElement>();
+  const createItemForm = superForm(data.createItemForm, {
+    id: "create-item-form",
+    validators: zodClient(itemSchema),
+    resetForm: true,
+    onResult: ({ result, formElement }) => {
+      if (result.type === "redirect" && result.status === 303) {
+        createDialogOpen = false;
+        createSheetOpen = false;
+        formElement.reset();
+      }
+    },
+  });
+
+  function openCreateForm() {
+    const isMobile = window.innerWidth < 768;
+    createDialogOpen = !isMobile;
+    createSheetOpen = isMobile;
+  }
+
+  $effect(() => {
+    box = data.box;
+  });
 
   $effect(() => {
     const url = data.box?.qrCode?.url || data.qrCode?.url;
@@ -237,7 +268,7 @@
                 };
               }}
             >
-              <Form.Field {form} name="qrCode">
+              <Form.Field form={downloadQrForm} name="qrCode">
                 <Form.Control let:attrs>
                   <input
                     type="hidden"
@@ -247,7 +278,7 @@
                 </Form.Control>
               </Form.Field>
 
-              <Form.Field {form} name="colorCode">
+              <Form.Field form={downloadQrForm} name="colorCode">
                 <Form.Control let:attrs>
                   <input
                     type="hidden"
@@ -346,8 +377,26 @@
   <Button
     type="button"
     class="sticky bottom-2 mx-8 md:mx-[40vw] flex gap-2 items-center"
+    on:click={openCreateForm}
   >
     <p>Add an Item</p>
     <PlusCircle size={20} />
   </Button>
 </section>
+
+<CreateItemDialog open={createDialogOpen} form={createItemForm} />
+<CreateItemSheet open={createSheetOpen} form={createItemForm} />
+
+<!-- <UpdateBoxDialog
+  projectId={project.id}
+  open={updateDialogOpen}
+  form={projectUpdateForm}
+  submitting={submittingUpdate}
+/>
+
+<UpdateBoxSheet
+  projectId={project.id}
+  open={updateSheetOpen}
+  form={projectUpdateForm}
+  submitting={submittingUpdate}
+/> -->

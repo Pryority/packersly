@@ -18,19 +18,18 @@ import QRCode from "qrcode";
 import db from "@db";
 import { generateQrSchema } from "@routes/settings/zod";
 
-export const load: PageServerLoad = async ({ locals, url, params }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
     throw redirect(302, "/login");
   }
 
-  const urlPathname = url.pathname; // "/project/the-big-move"
-  const pathSegments = urlPathname.split("/");
-  const projectHandle = pathSegments[2]; // "the-big-move"
+  const { projectHandle, roomHandle } = params;
+  console.log(params);
 
   // Get just the room we need with its boxes
   const ROOM = await db.query.room.findFirst({
     where: and(
-      eq(room.handle, params.handle),
+      eq(room.handle, roomHandle),
       eq(
         room.projectId,
         db
@@ -90,9 +89,8 @@ export const actions = {
     const form = await superValidate(request, zod(boxSchema));
     if (!form.valid) return fail(400, { form });
 
-    const pathParts = url.pathname.split("/");
-    const projectHandle = pathParts[2];
-    const roomHandle = params.handle;
+    const { projectHandle, roomHandle } = params;
+    console.log(params);
 
     if (!roomHandle || !projectHandle) {
       return fail(400, {
@@ -390,9 +388,8 @@ export const actions = {
   "download-all-generated": async ({ locals, params, url }) => {
     if (!locals.user) throw error(401, "Unauthorized");
 
-    const pathParts = url.pathname.split("/");
-    const projectHandle = pathParts[2];
-    const roomHandle = params.handle;
+    const { projectHandle, roomHandle } = params;
+    console.log(params);
 
     if (!roomHandle || !projectHandle) {
       return fail(400, {

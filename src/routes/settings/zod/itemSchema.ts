@@ -9,5 +9,5 @@ const itemSchema = z.object({
   quantity: z.number().default(1),
 });
 
-export type ItemSchema = z.infer<typeof itemSchema>;
+export type ItemSchema = typeof itemSchema;
 export default itemSchema;
