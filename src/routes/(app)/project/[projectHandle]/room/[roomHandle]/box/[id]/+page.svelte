@@ -269,11 +269,17 @@
                   >Edit Box</DropdownMenu.Item
                 >
                 <DropdownMenu.Separator />
-                <DropdownMenu.Item
-                  class="text-destructive focus:text-destructive"
-                >
-                  Delete Box
-                </DropdownMenu.Item>
+                <form method="POST" action="?/delete-box">
+                  <input type="hidden" name="boxId" value={box.id} />
+                  <DropdownMenu.Item>
+                    <button
+                      type="submit"
+                      class="text-destructive focus:text-destructive w-full text-left"
+                    >
+                      Delete Box
+                    </button>
+                  </DropdownMenu.Item>
+                </form>
               </DropdownMenu.Content>
             </DropdownMenu.Root>
           </div>
@@ -325,11 +331,14 @@
               {/if}
             </div>
             <div class="flex flex-col items-center gap-2 mt-2">
-              <span class="text-sm text-muted-foreground">
+              <span
+                class="text-xs md:text-sm text-center max-w-sm text-muted-foreground"
+              >
                 {#if data.qrCode?.isAssigned}
                   Scan to view box contents
                 {:else}
-                  Put QR Code on a box and add items to track.
+                  Put this QR Code on a box, then scan and add items on
+                  Packersly to stay organized.
                 {/if}
               </span>
               <form
@@ -395,7 +404,7 @@
                   type="submit"
                   variant="outline"
                   size="sm"
-                  class="flex items-center gap-2"
+                  class="flex items-center gap-2 mt-2 md:mt-4"
                 >
                   <Download class="h-4 w-4" />
                   {$downloadingQr ? "Downloading..." : "Download QR Code"}

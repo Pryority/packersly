@@ -159,118 +159,124 @@
       <div
         class="bg-secondary p-4 rounded-lg flex flex-col items-center justify-between gap-4"
       >
-        <div class="flex max-md:flex-col w-full md:justify-between">
-          <div class="max-md:mb-2 max-md:text-center">
-            <p class="text-sm text-muted-foreground">Available QR Codes</p>
-            <p class="text-2xl font-bold">{availableQrCodes || 0}</p>
+        <div class="flex flex-col w-full gap-4">
+          <div class="flex max-md:flex-col items-center justify-between">
+            <div class="max-md:mb-2 max-md:text-center">
+              <p class="text-sm text-muted-foreground">Available QR Codes</p>
+              <p class="text-2xl font-bold">{availableQrCodes || 0}</p>
+            </div>
+            <div
+              class="flex max-md:flex-col max-md:w-full items-center gap-4 md:gap-8"
+            >
+              <form
+                method="POST"
+                action="?/generate-qr"
+                use:enhanceGenerateQr
+                class="flex max-md:flex-col gap-2 max-md:w-full"
+              >
+                <input type="hidden" name="roomId" value={data.room.id} />
+                <input
+                  type="hidden"
+                  name="count"
+                  value={$generateQrFormData.count}
+                />
+                <Button
+                  variant="outline"
+                  on:click={() => {
+                    $generateQrFormData = {
+                      roomId: data.room.id,
+                      count: 25,
+                    };
+                  }}
+                  disabled={$generatingQr}
+                  type="submit"
+                >
+                  Generate 25
+                </Button>
+
+                <Button
+                  variant="outline"
+                  on:click={() => {
+                    $generateQrFormData = {
+                      roomId: data.room.id,
+                      count: 50,
+                    };
+                  }}
+                  disabled={$generatingQr}
+                  type="submit"
+                >
+                  Generate 50
+                </Button>
+
+                <Button
+                  variant="outline"
+                  on:click={() => {
+                    $generateQrFormData = {
+                      roomId: data.room.id,
+                      count: 100,
+                    };
+                  }}
+                  disabled={$generatingQr}
+                  type="submit"
+                >
+                  Generate 100
+                </Button>
+              </form>
+              <form
+                method="POST"
+                action="?/download-all-generated"
+                class="w-full md:w-fit"
+                use:enhanceDownloadQr
+              >
+                <input type="hidden" name="roomId" value={data.room.id} />
+                <Button
+                  type="submit"
+                  disabled={$downloadingQr || availableQrCodes === 0}
+                  class="relative w-full"
+                >
+                  <div class="grid place-items-center w-full h-full">
+                    <div class="flex items-center gap-2">
+                      <p>Download All</p>
+                      <Download class="h-4 w-4" />
+                      <div
+                        class="absolute -top-2 -right-2 bg-background border-2 ring-2 ring-secondary border-primary text-primary rounded-full h-6 w-6 grid place-items-center text-[8px] font-medium"
+                      >
+                        {availableQrCodes}
+                      </div>
+                    </div>
+                  </div>
+                </Button>
+              </form>
+            </div>
           </div>
 
-          <form
-            method="POST"
-            action="?/generate-qr"
-            use:enhanceGenerateQr
-            class="flex max-md:flex-col gap-2 max-md:w-full"
-          >
-            <input type="hidden" name="roomId" value={data.room.id} />
-            <input
-              type="hidden"
-              name="count"
-              value={$generateQrFormData.count}
-            />
-            <Button
-              variant="outline"
-              on:click={() => {
-                $generateQrFormData = {
-                  roomId: data.room.id,
-                  count: 25,
-                };
-              }}
-              disabled={$generatingQr}
-              type="submit"
-            >
-              Generate 25
-            </Button>
-
-            <Button
-              variant="outline"
-              on:click={() => {
-                $generateQrFormData = {
-                  roomId: data.room.id,
-                  count: 50,
-                };
-              }}
-              disabled={$generatingQr}
-              type="submit"
-            >
-              Generate 50
-            </Button>
-
-            <Button
-              variant="outline"
-              on:click={() => {
-                $generateQrFormData = {
-                  roomId: data.room.id,
-                  count: 100,
-                };
-              }}
-              disabled={$generatingQr}
-              type="submit"
-            >
-              Generate 100
-            </Button>
-          </form>
-          <form
-            method="POST"
-            action="?/download-all-generated"
-            class="w-fit"
-            use:enhanceDownloadQr
-          >
-            <input type="hidden" name="roomId" value={data.room.id} />
-            <Button
-              type="submit"
-              disabled={$downloadingQr || availableQrCodes === 0}
-              class="relative"
-            >
-              <div class="grid place-items-center w-full h-full">
-                <div class="flex items-center gap-2">
-                  <p>Download All</p>
-                  <Download class="h-4 w-4" />
-                  <div
-                    class="absolute -top-2 -right-2 bg-background border-2 ring-2 ring-secondary border-primary text-primary rounded-full h-6 w-6 grid place-items-center text-[8px] font-medium"
-                  >
-                    {availableQrCodes}
-                  </div>
-                </div>
-              </div>
-            </Button>
-          </form>
+          {#if availableQrCodes === 0}
+            <Alert variant="destructive">
+              <AlertTitle>No QR Codes Available</AlertTitle>
+              <AlertDescription>
+                You must generate QR codes before creating a box to track or
+                store items.
+              </AlertDescription>
+            </Alert>
+          {:else if availableQrCodes < 10}
+            <Alert>
+              <AlertDescription>
+                Running low on available QR codes. Generate more to ensure you
+                have enough for your boxes.
+              </AlertDescription>
+            </Alert>
+          {:else if availableQrCodes > 75}
+            <Alert class="border-amber-400">
+              <AlertDescription class="text-amber-600">
+                You have {availableQrCodes} QR codes available. Consider using existing
+                codes before generating more.
+              </AlertDescription>
+            </Alert>
+          {/if}
         </div>
-        {#if availableQrCodes === 0}
-          <Alert variant="destructive">
-            <AlertTitle>No QR Codes Available</AlertTitle>
-            <AlertDescription>
-              You must generate QR codes before creating a box to track or store
-              items.
-            </AlertDescription>
-          </Alert>
-        {:else if availableQrCodes < 10}
-          <Alert>
-            <AlertDescription>
-              Running low on available QR codes. Generate more to ensure you
-              have enough for your boxes.
-            </AlertDescription>
-          </Alert>
-        {:else if availableQrCodes > 75}
-          <Alert class="border-amber-400">
-            <AlertDescription class="text-amber-600">
-              You have {availableQrCodes} QR codes available. Consider using existing
-              codes before generating more.
-            </AlertDescription>
-          </Alert>
-        {/if}
       </div>
-    </div>
-  </Card.Content>
+    </div></Card.Content
+  >
 </Card.Root>
 <Card.Root class="m-4">
   <Card.Header

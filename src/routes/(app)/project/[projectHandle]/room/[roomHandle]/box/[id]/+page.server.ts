@@ -323,6 +323,26 @@ export const actions = {
       return fail(500, { form, error: "Update failed" });
     }
   },
+  "delete-box": async ({ locals, request }) => {
+    if (!locals.user) throw error(401);
+
+    const formData = await request.formData();
+    const boxId = formData.get("boxId")?.toString();
+
+    if (!boxId) return fail(400, { message: "Box ID is required" });
+
+    try {
+      const deleteResult = await db
+        .delete(box)
+        .where(eq(box.id, boxId))
+        .returning();
+      console.log(deleteResult);
+      return { success: true };
+    } catch (err) {
+      console.error("Error deleting box:", err);
+      return fail(500, { message: "Failed to delete box" });
+    }
+  },
   download: async ({ request }) => {
     const form = await superValidate(request, zod(downloadQrSchema));
     if (!form.valid) {

@@ -1,9 +1,7 @@
 <!-- src/routes/dashboard/components/layout/DashboardHeader.svelte -->
 <script lang="ts">
   import PanelLeft from "lucide-svelte/icons/panel-left";
-  import Search from "lucide-svelte/icons/search";
   import { Button } from "@components/ui/button";
-  import { Input } from "@components/ui/input";
   import * as Sheet from "@components/ui/sheet";
   import * as Breadcrumb from "@components/ui/breadcrumb";
   import { MobileNav } from "@components/layout";
@@ -133,3 +131,30 @@
   </Breadcrumb.Root>
   <UserNav {user} />
 </header>
+
+<div class="md:hidden px-4 py-2 border-b bg-background">
+  <Breadcrumb.Root>
+    <Breadcrumb.List class="flex flex-wrap items-center gap-1 text-sm">
+      {#each breadcrumbs as crumb, i}
+        <Breadcrumb.Item>
+          {#if i === breadcrumbs.length - 1}
+            <Breadcrumb.Page class="truncate max-w-[90vw]"
+              >{crumb.label}</Breadcrumb.Page
+            >
+          {:else}
+            <Breadcrumb.Link
+              href={crumb.href}
+              class="truncate max-w-[90vw]"
+              data-sveltekit-preload-data="hover"
+            >
+              {crumb.label}
+            </Breadcrumb.Link>
+          {/if}
+        </Breadcrumb.Item>
+        {#if i < breadcrumbs.length - 1}
+          <Breadcrumb.Separator class="mx-1" />
+        {/if}
+      {/each}
+    </Breadcrumb.List>
+  </Breadcrumb.Root>
+</div>
