@@ -16,7 +16,7 @@ import boxSchema from "@routes/settings/zod/boxSchema";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import db from "@db";
-import { generateQrSchema } from "@routes/settings/zod";
+import { downloadQrSchema, generateQrSchema } from "@routes/settings/zod";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
@@ -79,6 +79,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     availableQrCodes,
     createBoxForm: await superValidate(zod(boxSchema)),
     generateQrForm: await superValidate(zod(generateQrSchema)),
+    downloadQrForm: await superValidate(zod(downloadQrSchema)),
   };
 };
 
@@ -227,6 +228,7 @@ export const actions = {
       .select({
         roomHandle: room.handle,
         projectHandle: project.handle,
+        colorCode: room.colorCode,
       })
       .from(room)
       .innerJoin(project, eq(room.projectId, project.id))
@@ -250,7 +252,7 @@ export const actions = {
       )
       .then((res) => res[0].count);
 
-    if (availableQrCodeCount > 100) {
+    if (availableQrCodeCount >= 100) {
       return fail(400, {
         form,
         message:
@@ -318,7 +320,7 @@ export const actions = {
 
           // Generate QR code SVG
           const qrDataUrl = await QRCode.toDataURL(boxUrl.toString(), {
-            margin: 1,
+            margin: 0,
             width: 150,
             errorCorrectionLevel: "M",
           });
@@ -329,7 +331,14 @@ export const actions = {
           const xPos = row * 200 + 20;
           const yPos = col * 250 + 20;
 
-          // Add QR code to PDF
+          // Draw colored border
+          doc.save();
+          doc
+            .roundedRect(xPos - 8, yPos - 8, 165, 165, 10)
+            .lineWidth(8)
+            .stroke(roomDetails.colorCode);
+          doc.restore();
+
           doc.image(qrDataUrl, xPos, yPos, {
             width: 150,
             height: 150,
@@ -337,12 +346,12 @@ export const actions = {
 
           // Add box identifier below QR code
           doc.font("Helvetica").fontSize(10);
-          doc.text(`Box #${availableQrCodeCount + i + 1}`, xPos, yPos + 160, {
+          doc.text(`Box #${availableQrCodeCount + i + 1}`, xPos, yPos + 170, {
             width: 150,
             align: "center",
           });
           doc.font("Helvetica").fontSize(8);
-          doc.text(boxUrl.toString(), xPos, yPos + 175, {
+          doc.text(boxUrl.toString(), xPos, yPos + 185, {
             width: 150,
             align: "center",
           });
@@ -385,40 +394,51 @@ export const actions = {
       throw error(500, "Failed to generate QR codes");
     }
   },
-  "download-all-generated": async ({ locals, params, url }) => {
+  "download-all-generated": async ({ locals, params, request }) => {
     if (!locals.user) throw error(401, "Unauthorized");
+    const form = await superValidate(request, zod(downloadQrSchema));
+    if (!form.valid) return fail(400, { form });
 
-    const { projectHandle, roomHandle } = params;
-    console.log(params);
+    // const { projectHandle, roomHandle } = params;
+    // console.log(params);
 
-    if (!roomHandle || !projectHandle) {
-      return fail(400, {
-        message: "Both project and room handles are required",
-      });
-    }
+    const { roomId } = form.data;
+
     try {
-      // Combine project and room lookup into a single query
-      const [result] = await db
+      const ROOM = await db
         .select({
-          project: { id: project.id },
-          room: { id: room.id, handle: room.handle },
+          id: room.id,
+          colorCode: room.colorCode,
         })
-        .from(project)
-        .innerJoin(
-          room,
-          and(eq(room.projectId, project.id), eq(room.handle, roomHandle)),
-        )
-        .where(
-          and(
-            eq(project.handle, projectHandle),
-            eq(project.userId, locals.user.id),
-          ),
-        )
-        .limit(1);
+        .from(room)
+        .where(eq(room.id, roomId))
+        .limit(1)
+        .then((result) => result[0]);
 
-      if (!result) {
-        return fail(404, { message: "Project or room not found" });
-      }
+      if (!ROOM) return fail(404, { form, message: "Room not found" });
+
+      // // Combine project and room lookup into a single query
+      // const [result] = await db
+      //   .select({
+      //     project: { id: project.id },
+      //     room: { id: room.id, handle: room.handle, colorCode: room.colorCode },
+      //   })
+      //   .from(project)
+      //   .innerJoin(
+      //     room,
+      //     and(eq(room.projectId, project.id), eq(room.handle, roomHandle)),
+      //   )
+      //   .where(
+      //     and(
+      //       eq(project.handle, projectHandle),
+      //       eq(project.userId, locals.user.id),
+      //     ),
+      //   )
+      //   .limit(1);
+
+      // if (!result) {
+      //   return fail(404, { message: "Project or room not found" });
+      // }
 
       // First, find an available pre-generated QR code for room
       const availableQrCodes = await db
@@ -426,7 +446,7 @@ export const actions = {
         .from(qrCode)
         .where(
           and(
-            eq(qrCode.roomId, result.room.id),
+            eq(qrCode.roomId, ROOM.id),
             eq(qrCode.isPreGenerated, true),
             eq(qrCode.isAssigned, false),
           ),
@@ -462,18 +482,25 @@ export const actions = {
 
         // Generate QR code SVG
         const qrDataUrl = await QRCode.toDataURL(boxUrl.toString(), {
-          margin: 1,
+          margin: 0,
           width: 150,
           errorCorrectionLevel: "M",
         });
 
-        const row = Math.floor(positionOnPage / 3);
-        const col = positionOnPage % 3;
+        const col = Math.floor(positionOnPage / 3);
+        const row = positionOnPage % 3;
 
         const xPos = row * 200 + 20;
         const yPos = col * 250 + 20;
 
-        // Add QR code to PDF
+        // Draw colored border
+        doc.save();
+        doc
+          .roundedRect(xPos - 8, yPos - 8, 165, 165, 10)
+          .lineWidth(8)
+          .stroke(ROOM.colorCode);
+        doc.restore();
+
         doc.image(qrDataUrl, xPos, yPos, {
           width: 150,
           height: 150,
@@ -481,16 +508,15 @@ export const actions = {
 
         // Add box identifier below QR code
         doc.font("Helvetica").fontSize(10);
-        doc.text(`Box #${i + 1}`, xPos, yPos + 160, {
+        doc.text(`Box #${i + 1}`, xPos, yPos + 170, {
           width: 150,
           align: "center",
         });
-        doc
-          .text(boxUrl.toString(), xPos, yPos + 175, {
-            width: 150,
-            align: "center",
-          })
-          .fontSize(4);
+        doc.font("Helvetica").fontSize(8);
+        doc.text(boxUrl.toString(), xPos, yPos + 185, {
+          width: 150,
+          align: "center",
+        });
       }
 
       // Finalize the PDF
@@ -502,12 +528,10 @@ export const actions = {
       // Combine all chunks into final PDF dat
       const pdfData = Buffer.concat(chunks);
 
-      return new Response(pdfData, {
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="qr-codes.pdf"`,
-        },
-      });
+      return {
+        form,
+        pdf: pdfData.toString("base64"),
+      };
     } catch (err: any) {
       console.error("Error downloading available QR codes:", err);
       throw error(500, "Failed to download QR codes");

@@ -7,7 +7,11 @@
   import * as Table from "@components/ui/table/index.js";
   import { page } from "$app/stores";
   import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
-  import type { BoxSchema, GenerateQrSchema } from "@routes/settings/zod";
+  import type {
+    BoxSchema,
+    DownloadQrSchema,
+    GenerateQrSchema,
+  } from "@routes/settings/zod";
   import {
     type SuperValidated,
     type Infer,
@@ -16,10 +20,13 @@
   import { goto } from "$app/navigation";
   import { zodClient } from "sveltekit-superforms/adapters";
   import type { ActionResult } from "@sveltejs/kit";
-  import { boxSchema, generateQrSchema } from "@routes/settings/zod";
+  import {
+    boxSchema,
+    downloadQrSchema,
+    generateQrSchema,
+  } from "@routes/settings/zod";
   import { cn, downloadBlob } from "@utils";
   import QRCode from "qrcode";
-  import type { BoxWithRelations } from "@types";
   import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
   import Download from "lucide-svelte/icons/download";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
@@ -33,6 +40,7 @@
       availableQrCodes: number;
       createBoxForm: SuperValidated<Infer<BoxSchema>>;
       generateQrForm: SuperValidated<Infer<GenerateQrSchema>>;
+      downloadQrForm: SuperValidated<Infer<DownloadQrSchema>>;
     };
   } = $props();
 
@@ -40,7 +48,7 @@
   let sheetOpen = $state(false);
   let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
   const availableQrCodes = $derived(data.availableQrCodes);
-  const room = $state(data.room);
+
   const createBoxForm = superForm(data.createBoxForm, {
     id: "create-box-form",
     validators: zodClient(boxSchema),
@@ -93,32 +101,33 @@
     sheetOpen = isMobile;
   }
 
-  async function downloadAllQrCodes() {
-    try {
-      const response = await fetch("/api/qr-code/download/pdf", {
-        method: "POST",
-        body: JSON.stringify({
-          roomId: data.room.id,
-        }),
-      });
+  const downloadQrForm = superForm(data.downloadQrForm, {
+    id: "download-all-qr-form",
+    validators: zodClient(downloadQrSchema),
+    timeoutMs: 8000,
+    dataType: "json",
+    onResult: async ({ result }) => {
+      if (result.type === "success") {
+        const pdfBlob = new Blob(
+          [Uint8Array.from(atob(result.data?.pdf), (c) => c.charCodeAt(0))],
+          { type: "application/pdf" },
+        );
+        downloadBlob(pdfBlob, `${data.room.handle}-qr-codes.pdf`);
+      }
+    },
+  });
 
-      if (!response.ok) throw new Error("Failed to download QR codes");
+  const {
+    form: downloadQrFormData,
+    submitting: downloadingQr,
+    enhance: enhanceDownloadQr,
+  } = downloadQrForm;
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${data.room.name}-all-qr-codes.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch (error) {
-      console.error("Failed to download QR codes:", error);
-    }
-  }
-
-  $effect(() => {});
+  $effect(() => {
+    $downloadQrFormData = {
+      roomId: data.room.id,
+    };
+  });
 
   $effect(() => {
     if (data.room.boxes) {
@@ -209,9 +218,17 @@
             >
               Generate 100
             </Button>
+          </form>
+          <form
+            method="POST"
+            action="?/download-all-generated"
+            class="w-fit"
+            use:enhanceDownloadQr
+          >
+            <input type="hidden" name="roomId" value={data.room.id} />
             <Button
-              on:click={downloadAllQrCodes}
-              disabled={$generatingQr || availableQrCodes === 0}
+              type="submit"
+              disabled={$downloadingQr || availableQrCodes === 0}
               class="relative"
             >
               <div class="grid place-items-center w-full h-full">

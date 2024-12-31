@@ -139,7 +139,7 @@
         cancel();
       }
     },
-    onResult: ({ result, formElement }) => {
+    onResult: async ({ result, formElement }) => {
       if (result.type === "success") {
         // Close dialog/sheet
         createDialogOpen = false;
@@ -284,7 +284,7 @@
                 class="w-fit max-md:hidden"
                 style={`background-color: ${data.box?.room.colorCode ?? data.qrCode?.room.colorCode}`}
               >
-                #{data.box?.qrCode?.id ?? data.qrCode?.id}
+                QR #{box?.qrCode?.id ?? data.qrCode?.id}
               </Badge>
             {/if}
             <DropdownMenu.Root>
