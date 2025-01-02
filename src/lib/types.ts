@@ -1,7 +1,7 @@
-import type { box, item, Item, room } from "@db/schema";
 import type { Box } from "@db/schema/box";
 import type { Project } from "@db/schema/project";
 import type { QrCode } from "@db/schema/qrCode";
+import type room from "@db/schema/room";
 import type { Room } from "@db/schema/room";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -27,6 +27,7 @@ export type RoomWithRelations = InferSelectModel<typeof room> & {
 // Type for the basic project info that loads immediately
 export type ProjectBasic = {
   id: string;
+  handle: string;
   name: string;
   fromAddress: string;
   toAddress: string;

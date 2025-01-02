@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 const roomSchema = z.object({
+  id: z.string().uuid().optional(),
   name: z
     .string()
     .min(2, "Must be at least 2 characters")

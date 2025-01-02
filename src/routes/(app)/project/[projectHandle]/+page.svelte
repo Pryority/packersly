@@ -1,4 +1,4 @@
-<!-- src/routes/project/[handle]/+page.svelte -->
+<!-- src/routes/project/[projectHandle]/+page.svelte -->
 <script lang="ts">
   import * as DropdownMenu from "@components/ui/dropdown-menu";
   import { Button } from "@components/ui/button/index.js";
@@ -37,12 +37,21 @@
     };
   } = $props();
 
-  const {
-    project,
-    form: roomFormData,
-    projectUpdateForm: projectUpdateFormData,
-    rooms,
-  } = data;
+  const { form: roomFormData, projectUpdateForm: projectUpdateFormData } = data;
+
+  // Make both project and rooms reactive
+  let project = $state(data.project);
+  let rooms = $state(data.rooms);
+
+  // Update both when data changes
+  $effect(() => {
+    project = data.project;
+    rooms = data.rooms;
+  });
+
+  $effect(() => {
+    project = data.project;
+  });
 
   // State for UI controls
   let createDialogOpen = $state(false);
@@ -69,12 +78,20 @@
     validators: zodClient(projectSchema),
     dataType: "json",
     taintedMessage: null,
-    onResult: ({ result, cancel }) => {
-      if (result.type === "redirect" && result.status === 303) {
+    onResult: async ({ result }) => {
+      if (result.type === "success") {
         updateDialogOpen = false;
         updateSheetOpen = false;
+
+        // Redirect to the updated project page
+        const newHandle = result.data?.form.message.projectHandle;
+        console.log(newHandle);
+        if (newHandle) {
+          await goto(`/project/${newHandle}`, { invalidateAll: true });
+        } else {
+          console.error("Missing project handle in response");
+        }
       }
-      cancel();
     },
   });
 
@@ -121,9 +138,14 @@
           Edit Project
         </DropdownMenu.Item>
         <DropdownMenu.Separator />
-        <DropdownMenu.Item class="text-destructive focus:text-destructive">
-          Delete Project
-        </DropdownMenu.Item>
+        <form method="POST" action="?/delete-project">
+          <input type="hidden" value={project.handle} />
+          <button type="submit" class="w-full">
+            <DropdownMenu.Item class="text-destructive focus:text-destructive">
+              Delete Project
+            </DropdownMenu.Item>
+          </button>
+        </form>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   </Card.Header>

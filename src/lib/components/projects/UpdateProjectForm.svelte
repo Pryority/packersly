@@ -14,6 +14,7 @@
   import Trash from "lucide-svelte/icons/trash";
   import { Separator } from "@components/ui/separator";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
+  import { page } from "$app/stores";
 
   let {
     form,
@@ -28,7 +29,10 @@
   function addRoom() {
     formData.update(($formData) => ({
       ...$formData,
-      rooms: [...$formData.rooms, { name: "", colorCode: "#000000" }],
+      rooms: [
+        ...($formData.rooms || []),
+        { name: "", colorCode: "#000000", id: crypto.randomUUID() },
+      ],
     }));
   }
 
@@ -43,7 +47,7 @@
     if ($formData.rooms.length === 0) {
       formData.update(($formData) => ({
         ...$formData,
-        rooms: [{ name: "", colorCode: "#000000" }],
+        rooms: [{ name: "", colorCode: "#000000", id: crypto.randomUUID() }],
       }));
     }
   });
@@ -51,6 +55,11 @@
 
 <Card.Root>
   <form method="POST" action="?/update-project" use:enhance>
+    <input
+      type="hidden"
+      name="projectHandle"
+      value={$page.params.projectHandle}
+    />
     <input type="hidden" name="projectId" value={projectId} />
     <Card.Content class="space-y-4">
       <Form.Field {form} name="name">

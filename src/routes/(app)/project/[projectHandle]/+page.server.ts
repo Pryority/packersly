@@ -1,4 +1,4 @@
-// src/routes/dashboard/[handle]/+page.server.ts
+// src/routes/project/[projectHandle]/+page.server.ts
 import {
   error,
   fail,
@@ -8,12 +8,21 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import db from "@db";
-import { project, room, user } from "@db/schema";
-import { and, eq, like, ne } from "drizzle-orm";
-import { superValidate } from "sveltekit-superforms";
+import { project, room } from "@db/schema";
+import * as schema from "@db/schema";
+import {
+  and,
+  eq,
+  like,
+  ne,
+  type ExtractTablesWithRelations,
+} from "drizzle-orm";
+import { message, superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { projectSchema, roomSchema } from "@routes/settings/zod";
 import { generateHandle } from "@utils";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
@@ -27,6 +36,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     ),
     columns: {
       id: true,
+      handle: true,
       name: true,
       fromAddress: true,
       toAddress: true,
@@ -71,6 +81,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   return {
     project: {
       id: projectWithRooms.id,
+      handle: projectWithRooms.handle,
       name: projectWithRooms.name,
       fromAddress: projectWithRooms.fromAddress,
       toAddress: projectWithRooms.toAddress,
@@ -179,47 +190,52 @@ export const actions = {
     if (!locals.user) throw error(401, "Unauthorized");
     const userId = locals.user.id;
 
+    // Validate the form
     const form = await superValidate(request, zod(projectSchema));
-    if (!form.valid) return fail(400, { form });
+    if (!form.valid) {
+      console.error("Validation failed:", form.errors);
+      return fail(400, { form });
+    }
+
+    // console.log("Form data:", form.data);
 
     const { projectHandle } = params;
-    if (!projectHandle)
+    if (!projectHandle) {
       return fail(400, { form, message: "Project handle required" });
+    }
 
     try {
-      return await db.transaction(async (tx) => {
-        const USER = await tx.query.user.findFirst({
-          where: eq(user.id, userId),
-        });
-        if (!USER) return fail(404, { message: "User not found" });
-
+      const updatedProjectHandle = await db.transaction(async (tx) => {
+        // Check if project exists and belongs to user
         const existingProject = await tx.query.project.findFirst({
           where: and(
             eq(project.handle, projectHandle),
-            eq(project.userId, USER.id),
+            eq(project.userId, userId),
           ),
+          with: { rooms: true },
         });
-        if (!existingProject)
-          return fail(404, { message: "Project not found" });
 
-        const baseHandle = generateHandle(form.data.name);
-        const existingProjects = await tx
-          .select({ handle: project.handle })
-          .from(project)
-          .where(
-            and(
-              eq(project.userId, USER.id),
-              like(project.handle, `${baseHandle}%`),
-              ne(project.id, existingProject.id),
-            ),
+        // console.log("Existing project:", existingProject);
+
+        if (!existingProject) {
+          return fail(404, { form, message: "Project not found" });
+        }
+
+        // Generate new handle if name changed
+        let uniqueHandle = projectHandle;
+        if (form.data.name !== existingProject.name) {
+          uniqueHandle = await generateUniqueHandle(
+            tx,
+            form.data.name,
+            userId,
+            existingProject.id,
           );
+        }
 
-        const uniqueHandle =
-          existingProjects.length > 0
-            ? `${baseHandle}-${existingProjects.length + 1}`
-            : baseHandle;
+        // console.log("New handle:", uniqueHandle);
 
-        await tx
+        // Update project
+        const updateResult = await tx
           .update(project)
           .set({
             name: form.data.name,
@@ -227,30 +243,109 @@ export const actions = {
             fromAddress: form.data.fromAddress,
             toAddress: form.data.toAddress,
           })
-          .where(eq(project.id, existingProject.id));
+          .where(eq(project.id, existingProject.id))
+          .returning(); // Add this to see what was updated
 
-        await tx.delete(room).where(eq(room.projectId, existingProject.id));
+        // console.log("Update result:", updateResult);
 
-        if (form.data.rooms?.length) {
-          await Promise.all(
-            form.data.rooms.map((roomData) =>
-              tx.insert(room).values({
+        // Handle rooms update
+        if (form.data.rooms && form.data.rooms.length > 0) {
+          // Delete existing rooms
+          const deleteResult = await tx
+            .delete(room)
+            .where(eq(room.projectId, existingProject.id))
+            .returning();
+
+          console.log("Delete rooms result:", deleteResult);
+
+          // Insert new rooms
+          const insertResult = await tx
+            .insert(room)
+            .values(
+              form.data.rooms.map((roomData) => ({
                 id: crypto.randomUUID(),
                 projectId: existingProject.id,
                 name: roomData.name,
                 handle: generateHandle(roomData.name),
                 colorCode: roomData.colorCode,
-              }),
-            ),
-          );
+              })),
+            )
+            .returning();
+
+          console.log("Insert rooms result:", insertResult);
         }
 
-        throw redirect(303, `/project/${uniqueHandle}`);
+        return uniqueHandle;
+      });
+
+      return message(form, {
+        text: "Updated Project!",
+        projectHandle: updatedProjectHandle,
       });
     } catch (error) {
-      if (error as Redirect) throw error;
       console.error("Project Update error:", error);
-      return fail(500, { form, error: "Update failed" });
+      console.error("Full error:", JSON.stringify(error, null, 2));
+      return fail(500, { form, message: "Failed to update project" });
+    }
+  },
+  "delete-project": async ({ locals, params }) => {
+    if (!locals.user) throw error(401, "Unauthorized");
+    const userId = locals.user.id;
+
+    const { projectHandle } = params;
+    if (!projectHandle)
+      return fail(400, { message: "Project handle required" });
+
+    // console.log(projectHandle);
+
+    try {
+      await db
+        .delete(project)
+        .where(
+          and(eq(project.userId, userId), eq(project.handle, projectHandle)),
+        );
+      throw redirect(303, "/dashboard");
+    } catch (error) {
+      if (error as Redirect) throw error;
+      console.error("Project Delete error:", error);
+      return fail(500, { error: "Delete failed" });
     }
   },
 } satisfies Actions;
+
+type DbTransaction = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+
+type GenerateUniqueHandleParams = {
+  tx: DbTransaction; // Scoped transaction for database operations
+  name: string; // The project name to generate a unique handle
+  userId: string; // The user's unique ID (UUID as a string)
+  currentProjectId: string; // The ID of the project being updated (UUID as a string)
+};
+
+// Helper function for generating unique handles
+async function generateUniqueHandle(
+  tx: GenerateUniqueHandleParams["tx"],
+  name: GenerateUniqueHandleParams["name"],
+  userId: GenerateUniqueHandleParams["userId"],
+  currentProjectId: GenerateUniqueHandleParams["currentProjectId"],
+): Promise<string> {
+  const baseHandle = generateHandle(name);
+  const existingProjects = await tx
+    .select({ handle: project.handle })
+    .from(project)
+    .where(
+      and(
+        eq(project.userId, userId),
+        like(project.handle, `${baseHandle}%`),
+        ne(project.id, currentProjectId),
+      ),
+    );
+
+  return existingProjects.length > 0
+    ? `${baseHandle}-${existingProjects.length + 1}`
+    : baseHandle;
+}
