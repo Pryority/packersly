@@ -6,7 +6,7 @@ const item = pgTable("item", {
   id: uuid("id").defaultRandom().primaryKey(),
   boxId: uuid("box_id")
     .notNull()
-    .references(() => box.id),
+    .references(() => box.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   quantity: integer("quantity").default(1),
   createdAt: timestamp("created_at", { withTimezone: true })
