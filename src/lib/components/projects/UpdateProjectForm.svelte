@@ -15,6 +15,7 @@
   import { Separator } from "@components/ui/separator";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
   import { page } from "$app/stores";
+  import { generateUUID } from "@utils";
 
   let {
     form,
@@ -31,7 +32,7 @@
       ...$formData,
       rooms: [
         ...($formData.rooms || []),
-        { name: "", colorCode: "#000000", id: crypto.randomUUID() },
+        { name: "", colorCode: "#000000", id: generateUUID() },
       ],
     }));
   }
@@ -47,7 +48,7 @@
     if ($formData.rooms.length === 0) {
       formData.update(($formData) => ({
         ...$formData,
-        rooms: [{ name: "", colorCode: "#000000", id: crypto.randomUUID() }],
+        rooms: [{ name: "", colorCode: "#000000", id: generateUUID() }],
       }));
     }
   });
