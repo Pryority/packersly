@@ -319,7 +319,7 @@
                   type="submit"
                   variant="outline"
                   disabled={$downloadingQr || availableQrCodes === 0}
-                  class="relative w-full bg-secondary-foreground text-secondary"
+                  class="relative w-full bg-secondary-foreground text-secondary hover:bg-secondary-foreground/80 hover:text-secondary"
                 >
                   <div class="grid place-items-center w-full h-full">
                     <div class="flex items-center gap-2">
