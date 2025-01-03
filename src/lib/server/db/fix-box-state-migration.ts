@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { box, qrCode, item } from "@db/schema";
-import db from "@db";
+import { box, qrCode, item } from "../db/schema";
+import db from "../db";
 
 // Migration to fix inconsistent box states
 export async function fixBoxStates() {
