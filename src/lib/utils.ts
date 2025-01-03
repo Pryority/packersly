@@ -2,8 +2,8 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { cubicOut } from "svelte/easing";
 import type { TransitionConfig } from "svelte/transition";
-import type { BoxWithRelations, ProjectData } from "@types";
-import { and, eq, like, ne } from "drizzle-orm";
+// import type { BoxWithRelations, ProjectData } from "@types";
+import type { Box, Room, Project } from "@db/schema";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -79,40 +79,22 @@ export function getUserInitials(
   return "";
 }
 
-export function generateHandle(name: string): string {
-  // First normalize the string to decompose accented characters
-  const normalized = name
-    .normalize("NFD")
-    // Remove diacritics (accents)
-    .replace(/[\u0300-\u036f]/g, "")
-    // Convert to lowercase
-    .toLowerCase()
-    // Replace non-alphanumeric characters (except hyphens) with hyphens
-    .replace(/[^a-z0-9-]+/g, "-")
-    // Remove leading and trailing hyphens
-    .replace(/^-+|-+$/g, "")
-    // Replace multiple consecutive hyphens with a single hyphen
-    .replace(/-{2,}/g, "-");
-
-  if (normalized.length < 3 || normalized.length > 50) {
-    throw new Error("Handle length must be between 3 and 50 characters");
-  }
-
-  return normalized;
-}
-
-export function getTotalRooms(project: ProjectData): number {
+export function getTotalRooms(project: Project): number {
+  if (!project.rooms) return 0;
   return project.rooms.length;
 }
 
-export function getTotalBoxes(project: ProjectData): number {
+export function getTotalBoxes(project: Project): number {
+  if (!project.rooms) return 0;
   return project.rooms.reduce((total, room) => {
     return total + (Array.isArray(room.boxes) ? room.boxes.length : 0);
   }, 0);
 }
 
-export function getTotalItems(project: ProjectData): number {
+export function getTotalItems(project: Project): number {
+  if (!project.rooms) return 0;
   return project.rooms.reduce((roomTotal, room) => {
+    if (!room.boxes) return 0;
     return (
       roomTotal +
       room.boxes.reduce((boxTotal, box) => {
@@ -128,7 +110,7 @@ export function getTotalItems(project: ProjectData): number {
   }, 0);
 }
 
-export function getTotalItemsOfBoxes(boxes: BoxWithRelations[]): number {
+export function getTotalItemsOfBoxes(boxes: Box[]): number {
   if (!boxes || boxes.length === 0) return 0;
 
   return boxes.reduce((boxTotal, box) => {
@@ -144,7 +126,7 @@ export function getTotalItemsOfBoxes(boxes: BoxWithRelations[]): number {
 }
 
 export function getProjectStats(
-  projects: ProjectData[],
+  projects: Project[],
   status: "active" | "draft" | "completed",
 ) {
   const filteredProjects = projects?.filter((p) => p.status === status) ?? [];
@@ -177,4 +159,20 @@ export function generateUUID() {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+export function generateHandle(name: string): string {
+  const normalized = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+
+  if (normalized.length < 3 || normalized.length > 50) {
+    throw new Error("Handle length must be between 3 and 50 characters");
+  }
+
+  return normalized;
 }

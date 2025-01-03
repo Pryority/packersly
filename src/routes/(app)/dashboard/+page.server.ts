@@ -2,14 +2,13 @@
 import { error, fail, redirect, type Redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 
-import { project, user, room } from "@db/schema";
+import { project, user, room, type Project } from "@db/schema";
 import { and, eq, like } from "drizzle-orm";
-import { generateHandle } from "@utils";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { projectSchema } from "@routes/settings/zod";
-import type { ProjectData } from "@types";
 import db from "@db";
+import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
@@ -28,7 +27,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         },
       },
     },
-  })) as ProjectData[];
+  })) as Project[];
 
   // console.log("Server Load Data:", { user: locals.user, projects });
 

@@ -20,9 +20,9 @@ import {
 import { message, superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import { projectSchema, roomSchema } from "@routes/settings/zod";
-import { generateHandle } from "@utils";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
@@ -71,7 +71,29 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         name: projectWithRooms.name,
         fromAddress: projectWithRooms.fromAddress,
         toAddress: projectWithRooms.toAddress,
-        rooms: projectWithRooms.rooms,
+        rooms: projectWithRooms.rooms.map((room) => ({
+          name: room.name,
+          colorCode: room.colorCode,
+          roomId: room.id,
+          roomHandle: room.handle,
+          boxes: room.boxes?.map((box) => ({
+            boxId: box.id,
+            notes: box.notes,
+            items:
+              box.items?.map((item) => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity || 1, // Convert null to 1
+              })) || [],
+            qrCode: box.qrCode
+              ? {
+                  id: box.qrCode.id,
+                  url: box.qrCode.url,
+                  isAssigned: box.qrCode.isAssigned,
+                }
+              : null,
+          })),
+        })),
       },
       zod(projectSchema),
     ),
@@ -224,12 +246,12 @@ export const actions = {
         // Generate new handle if name changed
         let uniqueHandle = projectHandle;
         if (form.data.name !== existingProject.name) {
-          uniqueHandle = await generateUniqueHandle(
+          uniqueHandle = await generateProjectHandle({
             tx,
-            form.data.name,
+            name: form.data.name,
             userId,
-            existingProject.id,
-          );
+            currentId: existingProject.id,
+          });
         }
 
         // console.log("New handle:", uniqueHandle);
@@ -337,21 +359,20 @@ type DbTransaction = PgTransaction<
   ExtractTablesWithRelations<typeof schema>
 >;
 
-type GenerateUniqueHandleParams = {
-  tx: DbTransaction; // Scoped transaction for database operations
-  name: string; // The project name to generate a unique handle
-  userId: string; // The user's unique ID (UUID as a string)
-  currentProjectId: string; // The ID of the project being updated (UUID as a string)
+type GenerateProjectHandleParams = {
+  tx: DbTransaction;
+  name: string;
+  userId: string;
+  currentId: string;
 };
 
 // Helper function for generating unique handles
-async function generateUniqueHandle(
-  tx: GenerateUniqueHandleParams["tx"],
-  name: GenerateUniqueHandleParams["name"],
-  userId: GenerateUniqueHandleParams["userId"],
-  currentProjectId: GenerateUniqueHandleParams["currentProjectId"],
+async function generateProjectHandle(
+  params: GenerateProjectHandleParams,
 ): Promise<string> {
+  const { tx, name, userId, currentId } = params;
   const baseHandle = generateHandle(name);
+
   const existingProjects = await tx
     .select({ handle: project.handle })
     .from(project)
@@ -359,7 +380,7 @@ async function generateUniqueHandle(
       and(
         eq(project.userId, userId),
         like(project.handle, `${baseHandle}%`),
-        ne(project.id, currentProjectId),
+        ne(project.id, currentId),
       ),
     );
 

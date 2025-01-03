@@ -18,22 +18,22 @@
   } from "sveltekit-superforms";
   import { zodClient } from "sveltekit-superforms/adapters";
   import { goto } from "$app/navigation";
-  import type { ProjectBasic, RoomWithRelations } from "@types";
   import { cn, getTotalItemsOfBoxes } from "@utils";
   import UpdateProjectDialog from "@components/projects/UpdateProjectDialog.svelte";
   import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
   import UpdateProjectSheet from "@components/projects/UpdateProjectSheet.svelte";
   import CreateRoomSheet from "@components/projects/CreateRoomSheet.svelte";
   import CreateRoomDialog from "@components/projects/CreateRoomDialog.svelte";
+  import type { Project, Room } from "@db/schema";
 
   const {
     data,
   }: {
     data: {
-      project: ProjectBasic;
+      project: Project;
       form: SuperValidated<Infer<RoomSchema>>;
       projectUpdateForm: SuperValidated<Infer<ProjectSchema>>;
-      rooms: RoomWithRelations[];
+      rooms: Room[];
     };
   } = $props();
 
@@ -195,7 +195,11 @@
 
               <Table.Cell>
                 <span class="text-center md:text-start md:text-lg">
-                  {getTotalItemsOfBoxes(room.boxes)}
+                  {#if room.boxes}
+                    {getTotalItemsOfBoxes(room.boxes)}
+                  {:else}
+                    0
+                  {/if}
                 </span>
               </Table.Cell>
 

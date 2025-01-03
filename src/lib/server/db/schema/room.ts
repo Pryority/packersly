@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import project from "./project";
-import box from "./box";
+import box, { type Box } from "./box";
 
 const room = pgTable(
   "room",
@@ -34,5 +34,5 @@ export const roomRelations = relations(room, ({ one, many }) => ({
   boxes: many(box),
 }));
 
-export type Room = typeof room.$inferSelect;
+export type Room = typeof room.$inferSelect & { boxes?: Box[] };
 export default room;

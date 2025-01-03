@@ -2,21 +2,37 @@
 import {
   error,
   fail,
-  json,
   redirect,
   type Actions,
   type Redirect,
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { box, item, project, room, qrCode } from "@db/schema";
-import { and, count, eq } from "drizzle-orm";
+import {
+  and,
+  count,
+  eq,
+  inArray,
+  like,
+  ne,
+  notInArray,
+  type ExtractTablesWithRelations,
+} from "drizzle-orm";
 import { message, superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import db from "@db";
-import { downloadQrSchema, generateQrSchema } from "@routes/settings/zod";
+import * as schema from "@db/schema";
+import {
+  downloadQrSchema,
+  generateQrSchema,
+  roomSchema,
+} from "@routes/settings/zod";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import { generateHandle } from "@utils";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
   if (!locals.user) {
@@ -80,6 +96,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     createBoxForm: await superValidate(zod(boxSchema)),
     generateQrForm: await superValidate(zod(generateQrSchema)),
     downloadQrForm: await superValidate(zod(downloadQrSchema)),
+    updateRoomForm: await superValidate(zod(roomSchema)),
   };
 };
 
@@ -213,6 +230,175 @@ export const actions = {
         form,
         message: "An error occurred during box creation",
       });
+    }
+  },
+  "update-room": async ({ locals, request, params, url }) => {
+    if (!locals.user) throw error(401, "Unauthorized");
+    const userId = locals.user.id;
+
+    const form = await superValidate(request, zod(roomSchema));
+    if (!form.valid) {
+      console.error("Validation failed:", form.errors);
+      return fail(400, { form });
+    }
+
+    const { projectHandle, roomHandle } = params;
+    if (!projectHandle || !roomHandle) {
+      return fail(400, { form, message: "Project & Room handle required" });
+    }
+
+    try {
+      const updatedRoomHandle = await db.transaction(async (tx) => {
+        // Check if the project exists and belongs to the user
+        const existingProject = await tx.query.project.findFirst({
+          where: and(
+            eq(project.handle, projectHandle),
+            eq(project.userId, userId),
+          ),
+          with: { rooms: true },
+        });
+
+        if (!existingProject) {
+          throw error(404, "Project not found or not owned by user");
+        }
+
+        // Find the room within the project
+        const existingRoom = existingProject.rooms.find(
+          (room) => room.handle === roomHandle,
+        );
+
+        if (!existingRoom) {
+          throw error(404, "Room not found in the specified project");
+        }
+
+        // Generate new handle if name changed
+        let uniqueHandle = roomHandle;
+        if (form.data.name !== existingRoom.name) {
+          uniqueHandle = await generateRoomHandle({
+            tx,
+            name: form.data.name,
+            projectId: existingProject.id,
+            currentId: existingRoom.id,
+          });
+        }
+
+        // Update room first
+        const [updatedRoom] = await tx
+          .update(room)
+          .set({
+            handle: uniqueHandle,
+            name: form.data.name,
+            colorCode: form.data.colorCode,
+          })
+          .where(eq(room.id, existingRoom.id))
+          .returning();
+
+        console.log("Update Room result:", updatedRoom);
+
+        // Handle boxes update if needed
+        if (form.data.boxes && form.data.boxes.length > 0) {
+          for (const boxData of form.data.boxes) {
+            if (boxData.boxId) {
+              // Update existing box
+              await tx
+                .update(box)
+                .set({
+                  notes: boxData.notes || null,
+                })
+                .where(eq(box.id, boxData.boxId));
+
+              // Update items if they exist
+              if (boxData.items && boxData.items.length > 0) {
+                // Delete existing items
+                await tx.delete(item).where(eq(item.boxId, boxData.boxId));
+
+                // Insert new items with type checking
+                const itemsToInsert = boxData.items
+                  .filter(
+                    (
+                      itemData,
+                    ): itemData is {
+                      id: string;
+                      name: string;
+                      quantity: number;
+                    } => {
+                      return Boolean(itemData.name); // Only include items with names
+                    },
+                  )
+                  .map((itemData) => ({
+                    id: itemData.id || crypto.randomUUID(),
+                    boxId: boxData.boxId!, // We know it's defined in this block
+                    name: itemData.name,
+                    quantity: itemData.quantity || 1,
+                  }));
+
+                if (itemsToInsert.length > 0) {
+                  await tx.insert(item).values(itemsToInsert);
+                }
+              }
+            } else {
+              // Create new box
+              const newBoxId = crypto.randomUUID();
+              await tx.insert(box).values({
+                id: newBoxId,
+                roomId: existingRoom.id,
+                notes: boxData.notes || null,
+                isPublic: false,
+                accessToken: crypto.randomUUID(),
+              });
+
+              // Insert items for new box if they exist
+              if (boxData.items && boxData.items.length > 0) {
+                const itemsToInsert = boxData.items
+                  .filter(
+                    (
+                      itemData,
+                    ): itemData is { name: string; quantity: number } => {
+                      return Boolean(itemData.name); // Only include items with names
+                    },
+                  )
+                  .map((itemData) => ({
+                    id: crypto.randomUUID(),
+                    boxId: newBoxId,
+                    name: itemData.name,
+                    quantity: itemData.quantity || 1,
+                  }));
+
+                if (itemsToInsert.length > 0) {
+                  await tx.insert(item).values(itemsToInsert);
+                }
+              }
+            }
+          }
+
+          // Delete boxes that are no longer in the form data
+          const formBoxIds = form.data.boxes
+            .map((b) => b.boxId)
+            .filter((id): id is string => Boolean(id));
+
+          if (formBoxIds.length > 0) {
+            await tx
+              .delete(box)
+              .where(
+                and(
+                  eq(box.roomId, existingRoom.id),
+                  notInArray(box.id, formBoxIds),
+                ),
+              );
+          }
+        }
+
+        return uniqueHandle;
+      });
+
+      return message(form, {
+        text: "Updated Room!",
+        roomHandle: updatedRoomHandle,
+      });
+    } catch (error) {
+      console.error("Room Update error:", error);
+      console.error("Full error:", JSON.stringify(error, null, 2));
+      return fail(500, { form, message: "Failed to update room" });
     }
   },
   "generate-qr": async ({ locals, request }) => {
@@ -537,3 +723,37 @@ export const actions = {
     }
   },
 } satisfies Actions;
+
+type DbTransaction = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+type GenerateRoomHandleParams = {
+  tx: DbTransaction;
+  name: string;
+  projectId: string;
+  currentId: string;
+};
+
+async function generateRoomHandle(
+  params: GenerateRoomHandleParams,
+): Promise<string> {
+  const { tx, name, projectId, currentId } = params;
+  const baseHandle = generateHandle(name);
+
+  const existingRooms = await tx
+    .select({ handle: room.handle })
+    .from(room)
+    .where(
+      and(
+        eq(room.projectId, projectId),
+        like(room.handle, `${baseHandle}%`),
+        ne(room.id, currentId),
+      ),
+    );
+
+  return existingRooms.length > 0
+    ? `${baseHandle}-${existingRooms.length + 1}`
+    : baseHandle;
+}

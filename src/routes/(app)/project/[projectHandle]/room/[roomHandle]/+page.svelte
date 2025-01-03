@@ -1,16 +1,15 @@
 <!-- src/routes/project/[handle]/room/[handle]/+page.svelte -->
 <script lang="ts">
-  import * as Dialog from "@components/ui/dialog";
-  import * as Sheet from "@components/ui/sheet";
   import { Button } from "@components/ui/button/index.js";
   import * as Card from "@components/ui/card/index.js";
+  import * as DropdownMenu from "@components/ui/dropdown-menu";
   import * as Table from "@components/ui/table/index.js";
   import { page } from "$app/stores";
-  import CreateBoxForm from "@components/projects/CreateBoxForm.svelte";
   import type {
     BoxSchema,
     DownloadQrSchema,
     GenerateQrSchema,
+    RoomSchema,
   } from "@routes/settings/zod";
   import {
     type SuperValidated,
@@ -19,18 +18,23 @@
   } from "sveltekit-superforms";
   import { goto } from "$app/navigation";
   import { zodClient } from "sveltekit-superforms/adapters";
-  import type { ActionResult } from "@sveltejs/kit";
   import {
     boxSchema,
     downloadQrSchema,
     generateQrSchema,
+    roomSchema,
   } from "@routes/settings/zod";
-  import { cn, downloadBlob, generateUUID } from "@utils";
+  import { cn, downloadBlob } from "@utils";
   import QRCode from "qrcode";
+  import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
   import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
   import Download from "lucide-svelte/icons/download";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
   import type { Room, Box } from "@db/schema";
+  import UpdateRoomDialog from "@components/projects/UpdateRoomDialog.svelte";
+  import UpdateRoomSheet from "@components/projects/UpdateRoomSheet.svelte";
+  import CreateBoxDialog from "@components/projects/CreateBoxDialog.svelte";
+  import CreateBoxSheet from "@components/projects/CreateBoxSheet.svelte";
 
   const {
     data,
@@ -41,35 +45,49 @@
       createBoxForm: SuperValidated<Infer<BoxSchema>>;
       generateQrForm: SuperValidated<Infer<GenerateQrSchema>>;
       downloadQrForm: SuperValidated<Infer<DownloadQrSchema>>;
+      updateRoomForm: SuperValidated<Infer<RoomSchema>>;
     };
   } = $props();
 
-  let dialogOpen = $state(false);
-  let sheetOpen = $state(false);
+  // State for UI controls
+  let createDialogOpen = $state(false);
+  let updateDialogOpen = $state(false);
+  let createSheetOpen = $state(false);
+  let updateSheetOpen = $state(false);
+
   let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
   const availableQrCodes = $derived(data.availableQrCodes);
 
-  // const createBoxForm = superForm(data.createBoxForm, {
-  //   id: "create-box-form",
-  //   validators: zodClient(boxSchema),
-  //   dataType: "json",
-  //   taintedMessage: null,
-  //   timeoutMs: 8000, // Add timeout
-  //   onSubmit: ({ cancel }) => {
-  //     return async ({ result }: { result: ActionResult }) => {
-  //       try {
-  //         if (result.type === "error" || result.type === "failure") {
-  //           cancel();
-  //         } else {
-  //           dialogOpen = false;
-  //           sheetOpen = false;
-  //         }
-  //       } catch (error) {
-  //         cancel();
-  //       }
-  //     };
-  //   },
-  // });
+  // Just get the form from data props
+  const updateRoomForm = superForm(data.updateRoomForm, {
+    id: "update-room-form",
+    validators: zodClient(roomSchema),
+    dataType: "json",
+    taintedMessage: null,
+    timeoutMs: 8000,
+    onResult: async ({ result }) => {
+      if (result.type === "success") {
+        updateDialogOpen = false;
+        updateSheetOpen = false;
+        // Redirect to the updated room page
+        const newHandle = result.data?.form.message.roomHandle;
+        console.log(newHandle);
+        if (newHandle) {
+          await goto(
+            `/project/${$page.params.projectHandle}/room/${newHandle}`,
+            { invalidateAll: true },
+          );
+        } else {
+          console.error("Missing project handle in response");
+        }
+      }
+    },
+  });
+  const {
+    form: updateRoomFormData,
+    submitting: updatingRoom,
+    enhance: enhanceUpdateRoom,
+  } = updateRoomForm;
 
   const createBoxForm = superForm(data.createBoxForm, {
     id: "create-box-form",
@@ -118,8 +136,8 @@
       console.log("Form result:", result);
 
       if (result.type === "success") {
-        dialogOpen = false;
-        sheetOpen = false;
+        createDialogOpen = false;
+        createSheetOpen = false;
 
         const location =
           result.data?.location || result.data?.form?.message?.location;
@@ -135,21 +153,11 @@
       }
     },
   });
-
-  // Initialize form data with defaults
-  $effect(() => {
-    if ($createBoxFormData && !$createBoxFormData.items?.length) {
-      $createBoxFormData = {
-        items: [{ name: "", quantity: 1 }],
-      };
-    }
-  });
-
-  // const {
-  //   form: createBoxFormData,
-  //   enhance: enhanceCreateBox,
-  //   submitting: creatingBox,
-  // } = createBoxForm;
+  const {
+    form: createBoxFormData,
+    submitting: creatingBox,
+    enhance: enhanceCreateBox,
+  } = createBoxForm;
 
   const generateQrForm = superForm(data.generateQrForm, {
     id: "generate-qr-form",
@@ -168,18 +176,11 @@
       }
     },
   });
-
   const {
     form: generateQrFormData,
     submitting: generatingQr,
     enhance: enhanceGenerateQr,
   } = generateQrForm;
-
-  function openForm() {
-    const isMobile = window.innerWidth < 768;
-    dialogOpen = !isMobile;
-    sheetOpen = isMobile;
-  }
 
   const downloadQrForm = superForm(data.downloadQrForm, {
     id: "download-all-qr-form",
@@ -196,18 +197,58 @@
       }
     },
   });
-
   const {
     form: downloadQrFormData,
     submitting: downloadingQr,
     enhance: enhanceDownloadQr,
   } = downloadQrForm;
 
-  const {
-    form: createBoxFormData,
-    submitting: creatingBox,
-    enhance: enhanceCreateBox,
-  } = createBoxForm;
+  function openForm() {
+    const isMobile = window.innerWidth < 768;
+    createDialogOpen = !isMobile;
+    createSheetOpen = isMobile;
+  }
+  function openUpdateForm() {
+    const isMobile = window.innerWidth < 768;
+    updateDialogOpen = !isMobile;
+    updateSheetOpen = isMobile;
+  }
+
+  // Initialize form data with defaults
+  $effect(() => {
+    if ($createBoxFormData && !$createBoxFormData.items?.length) {
+      $createBoxFormData = {
+        items: [{ name: "", quantity: 1 }],
+      };
+    }
+  });
+
+  $effect(() => {
+    if (data.room) {
+      $updateRoomFormData = {
+        roomId: data.room.id,
+        name: data.room.name,
+        colorCode: data.room.colorCode,
+        boxes: data.room.boxes?.map((box) => ({
+          boxId: box.id,
+          notes: box.notes,
+          items:
+            box.items?.map((item) => ({
+              id: item.id,
+              name: item.name,
+              quantity: item.quantity ?? 1,
+            })) || [],
+          qrCode: box.qrCode
+            ? {
+                id: box.qrCode.id,
+                url: box.qrCode.url,
+                isAssigned: box.qrCode.isAssigned,
+              }
+            : null,
+        })),
+      };
+    }
+  });
 
   $effect(() => {
     $downloadQrFormData = {
@@ -233,11 +274,41 @@
 </script>
 
 <Card.Root class="m-4">
-  <Card.Header>
-    <Card.Title>QR Code Management</Card.Title>
-    <Card.Description
-      >Generate and print QR codes for your boxes</Card.Description
-    >
+  <Card.Header class="flex flex-row items-center justify-between w-full">
+    <div class="flex flex-col gap-1 w-fit">
+      <Card.Title>QR Code Management</Card.Title>
+      <Card.Description
+        >Generate and print QR codes for your boxes</Card.Description
+      >
+    </div>
+
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild let:builder>
+        <Button
+          builders={[builder]}
+          size="icon"
+          variant="outline"
+          class="h-8 w-8 md:h-10 md:w-10"
+        >
+          <EllipsisVertical class="h-4 w-4" />
+          <span class="sr-only">Open menu</span>
+        </Button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content align="end">
+        <DropdownMenu.Item on:click={openUpdateForm}>
+          Edit Room
+        </DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <form method="POST" action="?/delete-room">
+          <input type="hidden" value={data.room.handle} />
+          <button type="submit" class="w-full">
+            <DropdownMenu.Item class="text-destructive focus:text-destructive">
+              Delete Room
+            </DropdownMenu.Item>
+          </button>
+        </form>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   </Card.Header>
 
   <Card.Content>
@@ -271,13 +342,13 @@
                   on:click={() => {
                     $generateQrFormData = {
                       roomId: data.room.id,
-                      count: 25,
+                      count: 5,
                     };
                   }}
                   disabled={$generatingQr}
                   type="submit"
                 >
-                  Generate 25
+                  Generate 5
                 </Button>
 
                 <Button
@@ -285,13 +356,13 @@
                   on:click={() => {
                     $generateQrFormData = {
                       roomId: data.room.id,
-                      count: 50,
+                      count: 25,
                     };
                   }}
                   disabled={$generatingQr}
                   type="submit"
                 >
-                  Generate 50
+                  Generate 25
                 </Button>
 
                 <Button
@@ -421,37 +492,6 @@
                   {/if}
                 </span>
               </Table.Cell>
-
-              <!-- <Table.Cell>
-                            <DropdownMenu.Root>
-                                <DropdownMenu.Trigger asChild let:builder>
-                                    <Button
-                                        aria-haspopup="true"
-                                        size="icon"
-                                        variant="ghost"
-                                        builders={[builder]}
-                                    >
-                                        <Ellipsis class="h-4 w-4" />
-                                        <span class="sr-only">Toggle menu</span>
-                                    </Button>
-                                </DropdownMenu.Trigger>
-                                <DropdownMenu.Content align="end">
-                                    <DropdownMenu.Label
-                                        >Actions</DropdownMenu.Label
-                                    >
-                                    <DropdownMenu.Item>
-                                        <a
-                                            href={`${$page.url.pathname}/box/${box.id}`}
-                                        >
-                                            View
-                                        </a>
-                                    </DropdownMenu.Item>
-                                    <DropdownMenu.Item>Edit</DropdownMenu.Item>
-                                    <DropdownMenu.Item>Delete</DropdownMenu.Item
-                                    >
-                                </DropdownMenu.Content>
-                            </DropdownMenu.Root>
-                        </Table.Cell> -->
             </Table.Row>
           {/each}
         </Table.Body>
@@ -475,67 +515,27 @@
   <PlusCircle class="min-w-4 max-w-4 aspect-square" />
 </Button>
 
-<Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
-  <Dialog.Portal class="hidden md:block">
-    <Dialog.Overlay
-      class="bg-background/80 backdrop-blur-sm animate-in fade-in"
-    />
-    <Dialog.Content class="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
-      <Dialog.Header class="top-0 z-10 pb-4 max-w-fit">
-        <Dialog.Title>Add a Box to Room</Dialog.Title>
-        <Dialog.Description class="flex flex-col gap-4">
-          Update your room. Add boxes with items for easy organization.
-          <span class="flex items-center gap-2">
-            <strong class="max-md:text-xs">Room Name:</strong>
-            <span class="mad-md:text-xs">
-              {data.room.name}
-            </span>
-          </span>
-          <span class="flex items-center gap-2">
-            <strong class="max-md:text-xs">Room Color Code:</strong>
-            <span
-              class="h-4 w-4 rounded-sm"
-              style={`background-color: ${data.room.colorCode}`}
-            ></span>
-            <span class="mad-md:text-xs">
-              {data.room.colorCode}
-            </span>
-          </span>
-        </Dialog.Description>
-      </Dialog.Header>
-      <div>
-        <CreateBoxForm form={createBoxForm} />
-      </div>
-    </Dialog.Content>
-  </Dialog.Portal>
-</Dialog.Root>
+<CreateBoxDialog
+  open={createDialogOpen}
+  form={createBoxForm}
+  roomDetails={{ name: data.room.name, colorCode: data.room.colorCode }}
+/>
+<CreateBoxSheet
+  bind:open={createSheetOpen}
+  form={createBoxForm}
+  roomDetails={{ name: data.room.name, colorCode: data.room.colorCode }}
+/>
 
-<Sheet.Root bind:open={sheetOpen} onOpenChange={(isOpen) => !isOpen}>
-  <Sheet.Content side="bottom" class="md:hidden max-h-[80vh] overflow-y-auto">
-    <Sheet.Header class="mb-4">
-      <Sheet.Title>Add a Box to Room</Sheet.Title>
-      <Sheet.Description class="flex flex-col gap-4 text-xs">
-        Update your room. Add boxes with items for easy organization.<br />
-        <span class="flex justify-between">
-          <span class="flex items-center gap-2">
-            <strong class="max-md:text-xs md:hidden">Room:</strong>
-            <span class="mad-md:text-xs">
-              {data.room.name}
-            </span>
-          </span>
-          <span class="flex items-center gap-2">
-            <strong class="max-md:text-xs">Color:</strong>
-            <span
-              class="h-4 w-4 rounded-sm"
-              style={`background-color: ${data.room.colorCode}`}
-            ></span>
-            <span class="mad-md:text-xs">
-              {data.room.colorCode}
-            </span>
-          </span>
-        </span>
-      </Sheet.Description>
-    </Sheet.Header>
-    <CreateBoxForm form={createBoxForm} />
-  </Sheet.Content>
-</Sheet.Root>
+<UpdateRoomDialog
+  roomId={data.room.id}
+  room={data.room}
+  open={updateDialogOpen}
+  form={updateRoomForm}
+/>
+
+<UpdateRoomSheet
+  roomId={data.room.id}
+  room={data.room}
+  open={updateSheetOpen}
+  form={updateRoomForm}
+/>
