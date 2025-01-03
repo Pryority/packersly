@@ -412,8 +412,8 @@
                   {/if}
                 </div>
               </Table.Cell>
-              <Table.Cell>
-                <span class="max-md:text-end">
+              <Table.Cell class="max-md:text-end">
+                <span>
                   {#if box.items}
                     {box.items.length}
                   {:else}
