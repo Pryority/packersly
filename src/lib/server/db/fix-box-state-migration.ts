@@ -32,9 +32,11 @@ export async function fixBoxStates(
       for (const boxData of inconsistentBoxes) {
         console.log(`Processing box ${boxData.id}`);
 
-        // Check for existing QR code
+        // Check for existing QR code by both URL and box_id
         const qrResult = await tx.execute(
-          sql`SELECT * FROM "qr_code" WHERE url = ${"/box/" + boxData.id}`,
+          sql`SELECT * FROM "qr_code"
+              WHERE url = ${"/box/" + boxData.id}
+                 OR box_id = ${boxData.id}`,
         );
         const existingQr = qrResult.rows[0];
 
@@ -53,18 +55,35 @@ export async function fixBoxStates(
             continue;
           }
 
-          await tx.execute(sql`
-            INSERT INTO "qr_code" (
-              id, room_id, url, box_id, is_assigned, is_pre_generated
-            ) VALUES (
-              ${crypto.randomUUID()},
-              ${boxData.room_id},
-              ${"/box/" + boxData.id},
-              ${boxData.id},
-              true,
-              false
-            )
-          `);
+          // Double check there's no existing QR code for this box
+          const doubleCheck = await tx.execute(
+            sql`SELECT id FROM "qr_code" WHERE box_id = ${boxData.id}`,
+          );
+
+          if (doubleCheck.rows.length === 0) {
+            await tx.execute(sql`
+              INSERT INTO "qr_code" (
+                id, room_id, url, box_id, is_assigned, is_pre_generated
+              ) VALUES (
+                ${crypto.randomUUID()},
+                ${boxData.room_id},
+                ${"/box/" + boxData.id},
+                ${boxData.id},
+                true,
+                false
+              )
+            `);
+          } else {
+            console.log(
+              `Found existing QR code on double-check for box ${boxData.id}`,
+            );
+            // Update the existing QR code instead
+            await tx.execute(sql`
+              UPDATE "qr_code"
+              SET is_assigned = true
+              WHERE box_id = ${boxData.id}
+            `);
+          }
         }
       }
     });
