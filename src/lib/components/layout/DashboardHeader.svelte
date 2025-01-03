@@ -138,9 +138,13 @@
       {#each breadcrumbs as crumb, i}
         <Breadcrumb.Item>
           {#if i === breadcrumbs.length - 1}
-            <Breadcrumb.Page class="truncate max-w-[16vw]"
-              >{crumb.label}</Breadcrumb.Page
+            <Breadcrumb.Page
+              class={breadcrumbs.length > 1
+                ? "truncate max-w-[16vw]"
+                : "truncate"}
             >
+              {crumb.label}
+            </Breadcrumb.Page>
           {:else}
             <Breadcrumb.Link
               href={crumb.href}
