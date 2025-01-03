@@ -340,7 +340,7 @@
           {#if availableQrCodes === 0}
             <Alert variant="destructive">
               <AlertTitle>No QR Codes Available</AlertTitle>
-              <AlertDescription>
+              <AlertDescription class="max-md:text-xs">
                 You must generate QR codes before creating a box to track or
                 store items.
               </AlertDescription>
