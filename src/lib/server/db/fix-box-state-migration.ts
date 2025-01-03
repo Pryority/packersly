@@ -6,22 +6,23 @@ export async function fixBoxStates(
   db: NodePgDatabase<typeof import("../db/schema")>,
 ) {
   try {
-    // Find boxes with items but no assigned QR codes
-    const inconsistentBoxes = await db.query.box.findMany({
-      where: sql`EXISTS (
-        SELECT 1 FROM ${item}
-        WHERE ${item.boxId} = ${box.id}
+    // Use raw SQL for the initial query to avoid any ORM translation issues
+    const result = await db.execute(sql`
+      SELECT b.*, r.id as room_id,
+             (SELECT json_agg(i.*) FROM "item" i WHERE i.box_id = b.id) as items
+      FROM "box" b
+      LEFT JOIN "room" r ON r.id = b.room_id
+      WHERE EXISTS (
+        SELECT 1 FROM "item" i
+        WHERE i.box_id = b.id
       ) AND NOT EXISTS (
-        SELECT 1 FROM ${qrCode}
-        WHERE ${qrCode.boxId} = ${box.id}
-        AND ${qrCode.isAssigned} = true
-      )`,
-      with: {
-        items: true,
-        room: true,
-      },
-    });
+        SELECT 1 FROM "qr_code" q
+        WHERE q.box_id = b.id
+        AND q.is_assigned = true
+      )
+    `);
 
+    const inconsistentBoxes = result.rows;
     console.log(
       `Found ${inconsistentBoxes.length} boxes with items but no assigned QR codes`,
     );
@@ -32,35 +33,38 @@ export async function fixBoxStates(
         console.log(`Processing box ${boxData.id}`);
 
         // Check for existing QR code
-        const existingQr = await tx.query.qrCode.findFirst({
-          where: sql`${qrCode.url} = ${"/box/" + boxData.id}`,
-        });
+        const qrResult = await tx.execute(
+          sql`SELECT * FROM "qr_code" WHERE url = ${"/box/" + boxData.id}`,
+        );
+        const existingQr = qrResult.rows[0];
 
         if (existingQr) {
           console.log(`Updating existing QR code for box ${boxData.id}`);
-          await tx
-            .update(qrCode)
-            .set({
-              boxId: boxData.id,
-              isAssigned: true,
-            })
-            .where(sql`${qrCode.id} = ${existingQr.id}`);
+          await tx.execute(sql`
+            UPDATE "qr_code"
+            SET box_id = ${boxData.id},
+                is_assigned = true
+            WHERE id = ${existingQr.id}
+          `);
         } else {
           console.log(`Creating new QR code for box ${boxData.id}`);
-
-          if (!boxData.roomId) {
+          if (!boxData.room_id) {
             console.error(`Box ${boxData.id} has no room_id`);
             continue;
           }
 
-          await tx.insert(qrCode).values({
-            id: crypto.randomUUID(),
-            roomId: boxData.roomId,
-            url: `/box/${boxData.id}`,
-            boxId: boxData.id,
-            isAssigned: true,
-            isPreGenerated: false,
-          });
+          await tx.execute(sql`
+            INSERT INTO "qr_code" (
+              id, room_id, url, box_id, is_assigned, is_pre_generated
+            ) VALUES (
+              ${crypto.randomUUID()},
+              ${boxData.room_id},
+              ${"/box/" + boxData.id},
+              ${boxData.id},
+              true,
+              false
+            )
+          `);
         }
       }
     });
@@ -70,7 +74,6 @@ export async function fixBoxStates(
       fixedBoxes: inconsistentBoxes.length,
       details: inconsistentBoxes.map((b) => ({
         boxId: b.id,
-        itemCount: b.items.length,
       })),
     };
   } catch (error) {
