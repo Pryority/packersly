@@ -2,21 +2,19 @@ import { sql } from "drizzle-orm";
 import { box, qrCode, item } from "../db/schema";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-// Migration to fix inconsistent box states
 export async function fixBoxStates(
   db: NodePgDatabase<typeof import("../db/schema")>,
 ) {
   try {
-    // Find all boxes that have items but are marked as unassigned
+    // Find boxes with items but no assigned QR codes
     const inconsistentBoxes = await db.query.box.findMany({
       where: sql`EXISTS (
         SELECT 1 FROM ${item}
         WHERE ${item.boxId} = ${box.id}
-        AND NOT EXISTS (
-          SELECT 1 FROM ${qrCode}
-          WHERE ${qrCode.boxId} = ${box.id}
-          AND ${qrCode.isAssigned} = true
-        )
+      ) AND NOT EXISTS (
+        SELECT 1 FROM ${qrCode}
+        WHERE ${qrCode.boxId} = ${box.id}
+        AND ${qrCode.isAssigned} = true
       )`,
       with: {
         items: true,
@@ -24,41 +22,42 @@ export async function fixBoxStates(
       },
     });
 
-    console.log(`Found ${inconsistentBoxes.length} inconsistent boxes`);
+    console.log(
+      `Found ${inconsistentBoxes.length} boxes with items but no assigned QR codes`,
+    );
 
-    // Process each inconsistent box
+    // Process each box
     await db.transaction(async (tx) => {
-      for (const boxItem of inconsistentBoxes) {
-        console.log(`Processing box ${boxItem.id}`);
+      for (const boxData of inconsistentBoxes) {
+        console.log(`Processing box ${boxData.id}`);
 
-        // Create a new QR code for this box if none exists
+        // Check for existing QR code
         const existingQr = await tx.query.qrCode.findFirst({
-          where: sql`${qrCode.url} LIKE ${"%/box/" + boxItem.id + "%"}`,
+          where: sql`${qrCode.url} = ${"/box/" + boxData.id}`,
         });
 
         if (existingQr) {
-          console.log(`Updating existing QR code for box ${boxItem.id}`);
-          // Update existing QR code
+          console.log(`Updating existing QR code for box ${boxData.id}`);
           await tx
             .update(qrCode)
             .set({
-              boxId: boxItem.id,
+              boxId: boxData.id,
               isAssigned: true,
             })
             .where(sql`${qrCode.id} = ${existingQr.id}`);
         } else {
-          console.log(`Creating new QR code for box ${boxItem.id}`);
-          // Ensure box has a roomId before creating QR code
-          if (!boxItem.room?.id) {
-            console.error(`Box ${boxItem.id} has no roomId`);
+          console.log(`Creating new QR code for box ${boxData.id}`);
+
+          if (!boxData.roomId) {
+            console.error(`Box ${boxData.id} has no room_id`);
             continue;
           }
 
           await tx.insert(qrCode).values({
-            roomId: boxItem.room.id,
-            url: `/box/${boxItem.id}`,
             id: crypto.randomUUID(),
-            boxId: boxItem.id,
+            roomId: boxData.roomId,
+            url: `/box/${boxData.id}`,
+            boxId: boxData.id,
             isAssigned: true,
             isPreGenerated: false,
           });
@@ -80,7 +79,6 @@ export async function fixBoxStates(
   }
 }
 
-// Prevention: Add a trigger or constraint to prevent future inconsistencies
 export async function addConsistencyConstraints(
   db: NodePgDatabase<typeof import("../db/schema")>,
 ) {
@@ -88,12 +86,13 @@ export async function addConsistencyConstraints(
     CREATE OR REPLACE FUNCTION check_box_assignment()
     RETURNS TRIGGER AS $$
     BEGIN
-      -- If there are items, ensure there's an assigned QR code
       IF EXISTS (
-        SELECT 1 FROM ${item} WHERE ${item.boxId} = NEW.id
+        SELECT 1 FROM "item"
+        WHERE "box_id" = NEW.id
       ) AND NOT EXISTS (
-        SELECT 1 FROM ${qrCode}
-        WHERE ${qrCode.boxId} = NEW.id AND ${qrCode.isAssigned} = true
+        SELECT 1 FROM "qr_code"
+        WHERE "box_id" = NEW.id
+        AND "is_assigned" = true
       ) THEN
         RAISE EXCEPTION 'Box must have an assigned QR code if it contains items';
       END IF;
@@ -101,9 +100,9 @@ export async function addConsistencyConstraints(
     END;
     $$ LANGUAGE plpgsql;
 
-    DROP TRIGGER IF EXISTS ensure_box_consistency ON ${box};
+    DROP TRIGGER IF EXISTS ensure_box_consistency ON "box";
     CREATE TRIGGER ensure_box_consistency
-    AFTER INSERT OR UPDATE ON ${box}
+    AFTER INSERT OR UPDATE ON "box"
     FOR EACH ROW
     EXECUTE FUNCTION check_box_assignment();
   `);
