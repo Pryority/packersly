@@ -15,8 +15,8 @@ import { message, superValidate } from "sveltekit-superforms";
 import db from "@db";
 import { validate as validateUUID } from "uuid";
 export const load: PageServerLoad = async ({ locals, params, url }) => {
-  console.log("Box ID param:", params.id);
-  if (!validateUUID(params.id)) {
+  // console.log("Box ID param:", params.boxId);
+  if (!validateUUID(params.boxId)) {
     throw error(400, "Invalid box ID format");
   }
   if (!locals.user) {
@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
   // First check for a QR code with this box ID
   const QRCODE = await db.query.qrCode.findFirst({
-    where: like(qrCode.url, `%/box/${params.id}%`),
+    where: like(qrCode.url, `%/box/${params.boxId}%`),
     with: {
       room: {
         with: {
@@ -50,7 +50,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   console.log("LOADING BOX DATA");
   // First, get the box with its relationships
   const BOX = await db.query.box.findFirst({
-    where: eq(box.id, params.id),
+    where: eq(box.id, params.boxId),
     with: {
       items: true,
       qrCode: true, // Add this line to include the QR code relation
@@ -342,23 +342,51 @@ export const actions = {
       });
     }
   },
-  "delete-box": async ({ locals, request }) => {
-    if (!locals.user) throw error(401);
+  "delete-box": async ({ locals, params }) => {
+    if (!locals.user) throw error(401, "Unauthorized");
+    const userId = locals.user.id;
+    const { projectHandle, roomHandle, boxId } = params;
 
-    const formData = await request.formData();
-    const boxId = formData.get("boxId")?.toString();
-
-    if (!boxId) return fail(400, { message: "Box ID is required" });
+    if (!projectHandle || !roomHandle || !boxId) {
+      return fail(400, { message: "Project & Room Handle & Box ID required" });
+    }
 
     try {
-      const deleteResult = await db
-        .delete(box)
-        .where(eq(box.id, boxId))
-        .returning();
-      console.log(deleteResult);
-      return { success: true };
+      // First verify ownership by checking the chain of relationships
+      const boxWithOwnership = await db.query.box.findFirst({
+        where: eq(box.id, boxId),
+        with: {
+          room: {
+            with: {
+              project: {
+                columns: {
+                  userId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!boxWithOwnership) {
+        return fail(404, { message: "Box not found" });
+      }
+
+      if (boxWithOwnership.room?.project?.userId !== userId) {
+        throw error(403, "You don't have permission to delete this box");
+      }
+
+      // If we get here, user owns the box and we can delete it
+      await db.delete(box).where(eq(box.id, boxId));
+
+      // Redirect to the room page instead of dashboard
+      throw redirect(303, `/project/${projectHandle}/room/${roomHandle}`);
     } catch (err) {
-      console.error("Error deleting box:", err);
+      if (err as Redirect) throw err;
+      if (err instanceof Error && err.message.includes("permission")) {
+        throw err; // Rethrow permission errors
+      }
+      console.error("Box Delete error:", err);
       return fail(500, { message: "Failed to delete box" });
     }
   },
