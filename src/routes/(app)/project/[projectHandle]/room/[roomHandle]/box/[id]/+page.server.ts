@@ -8,7 +8,7 @@ import {
 } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { box, item, project, qrCode, room } from "@db/schema";
-import { and, eq, like, notInArray } from "drizzle-orm";
+import { and, eq, inArray, like, notInArray } from "drizzle-orm";
 import { boxSchema, downloadQrSchema, itemSchema } from "@routes/settings/zod";
 import { zod } from "sveltekit-superforms/adapters";
 import { message, superValidate } from "sveltekit-superforms";
@@ -237,90 +237,86 @@ export const actions = {
       });
     }
   },
-  "update-box": async ({ request, locals, url }) => {
+  "update-box": async ({ locals, request }) => {
     if (!locals.user) throw error(401, "Unauthorized");
+
     const form = await superValidate(request, zod(boxSchema));
     console.log("Form data:", form.data);
+
     if (!form.valid) return fail(400, { form });
-    const boxId = form.data.boxId;
-    if (!boxId) return fail(400, { form, message: "Box ID required" });
+
+    const { boxId, items } = form.data;
+
+    if (!boxId) return fail(400, { form, message: "Box ID is required" });
 
     try {
-      return await db.transaction(async (tx) => {
-        const BOX = await tx.query.box.findFirst({
-          where: eq(box.id, boxId),
-          with: {
-            items: true,
-            room: {
-              with: {
-                project: {
-                  columns: { userId: true },
-                },
-              },
-            },
-          },
-        });
+      // First get existing box items for comparison
+      const existingItems = await db
+        .select()
+        .from(item)
+        .where(eq(item.boxId, boxId));
 
-        if (!BOX || BOX.room?.project.userId !== locals.user?.id) {
-          return fail(403, { message: "Box not found or unauthorized" });
-        }
+      console.log("Existing box items:", existingItems);
+      console.log("Form items:", items);
 
-        console.log("Existing box items:", BOX.items);
-        console.log("Form items:", form.data.items);
+      // Group items into categories
+      const existingItemIds = new Set(existingItems.map((i) => i.id));
+      const formItemIds = new Set(items.filter((i) => i.id).map((i) => i.id));
 
-        // Update existing items with ID matches
-        for (const formItem of form.data.items) {
-          if (formItem.id) {
-            const result = await tx
-              .update(item)
-              .set({
-                name: formItem.name,
-                quantity: formItem.quantity,
-              })
-              .where(eq(item.id, formItem.id))
-              .returning();
-            console.log("Update result:", result);
-            // const p1 = tx
-            //   .update(item)
-            //   .set({
-            //     name: formItem.name,
-            //     quantity: formItem.quantity,
-            //   })
-            //   .where(eq(item.id, formItem.id))
-            //   .prepare("p1");
-            // const result = await p1.execute({ id: 1 });
-            // console.log("SQL Query:", result);
-          } else {
-            console.log("Inserting new item:", formItem);
-            await tx.insert(item).values({
-              id: crypto.randomUUID(),
-              boxId: BOX.id,
-              name: formItem.name,
-              quantity: formItem.quantity,
-            });
-          }
-        }
+      const itemsToUpdate = items.filter(
+        (i) => i.id && existingItemIds.has(i.id),
+      );
+      const itemsToAdd = items.filter((i) => !i.id);
+      const itemIdsToDelete = [...existingItemIds].filter(
+        (id) => !formItemIds.has(id),
+      );
 
-        // Delete removed items
-        const formItemIds = form.data.items.map((i) => i.id).filter(Boolean);
-        const deleteResult = await tx
-          .delete(item)
-          .where(
-            and(
-              eq(item.boxId, BOX.id),
-              notInArray(item.id, formItemIds as string[]),
+      // Perform all operations in a transaction
+      await db.transaction(async (tx) => {
+        // 1. Update existing items
+        if (itemsToUpdate.length > 0) {
+          await Promise.all(
+            itemsToUpdate.map((updateItem) =>
+              tx
+                .update(item)
+                .set({
+                  name: updateItem.name,
+                  quantity: updateItem.quantity,
+                  updatedAt: new Date(),
+                })
+                .where(eq(item.id, updateItem.id!)),
             ),
-          )
-          .returning();
-        console.log("Delete result:", deleteResult);
+          );
+        }
 
-        return message(form, "Updated Box!");
+        // 2. Add new items
+        if (itemsToAdd.length > 0) {
+          await tx.insert(item).values(
+            itemsToAdd.map((newItem) => ({
+              id: crypto.randomUUID(),
+              boxId,
+              name: newItem.name,
+              quantity: newItem.quantity,
+            })),
+          );
+        }
+
+        // 3. Delete removed items
+        if (itemIdsToDelete.length > 0) {
+          await tx.delete(item).where(inArray(item.id, itemIdsToDelete));
+        }
       });
+
+      return {
+        form,
+        message: "Box updated successfully",
+      };
     } catch (error) {
-      console.error("Full error:", error);
-      if (error as Redirect) throw error;
-      console.error("Box Update error:", error);
-      return fail(500, { form, error: "Update failed" });
+      console.error("Box update error:", error);
+      return fail(500, {
+        form,
+        message: "Failed to update box",
+      });
     }
   },
   "delete-box": async ({ locals, request }) => {

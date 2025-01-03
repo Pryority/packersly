@@ -12,9 +12,9 @@
   } from "sveltekit-superforms";
   import Trash from "lucide-svelte/icons/trash";
   import { Separator } from "@components/ui/separator";
-  import boxSchema from "@routes/settings/zod/boxSchema";
   import type { BoxSchema } from "@routes/settings/zod";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
+  import { generateUUID } from "@utils";
 
   const { form }: { form: SuperForm<Infer<BoxSchema>> } = $props();
 
@@ -25,7 +25,7 @@
       ...$formData,
       items: [
         ...($formData.items || []),
-        { id: crypto.randomUUID(), name: "", quantity: 1 },
+        { id: generateUUID(), name: "", quantity: 1 },
       ],
     }));
   }
@@ -41,7 +41,7 @@
     if ($formData.items?.length === 0) {
       formData.update(($formData) => ({
         ...$formData,
-        items: [{ id: crypto.randomUUID(), name: "", quantity: 1 }],
+        items: [{ id: generateUUID(), name: "", quantity: 1 }],
       }));
     }
   });
@@ -62,7 +62,7 @@
                 <!-- Item Name -->
                 <Form.Field
                   {form}
-                  name={`items.${i}.name` as FormPath<Infer<typeof boxSchema>>}
+                  name={`items.${i}.name` as FormPath<Infer<BoxSchema>>}
                   class="md:col-span-8"
                 >
                   <Form.Control let:attrs>
@@ -81,9 +81,7 @@
                 <!-- Quantity -->
                 <Form.Field
                   {form}
-                  name={`items.${i}.quantity` as FormPath<
-                    Infer<typeof boxSchema>
-                  >}
+                  name={`items.${i}.quantity` as FormPath<Infer<BoxSchema>>}
                   class="md:col-span-3"
                 >
                   <Form.Control let:attrs>
@@ -152,32 +150,3 @@
     </Card.Footer>
   </form>
 </Card.Root>
-<!--
-<Dialog.Root bind:open={errorDialogOpen}>
-    <Dialog.Portal>
-        <Dialog.Overlay class="bg-background/80 backdrop-blur-sm" />
-        <Dialog.Content class="sm:max-w-[425px]">
-            <Dialog.Header>
-                <Dialog.Title class="flex items-center gap-2">
-                    <AlertCircle class="h-5 w-5 text-destructive" />
-                    Form Errors
-                </Dialog.Title>
-            </Dialog.Header>
-            <div class="py-6">
-                <ul class="list-disc pl-6 space-y-2">
-                    {#each getFormattedErrors() as error}
-                        <li class="text-sm text-destructive">{error}</li>
-                    {/each}
-                </ul>
-            </div>
-            <Dialog.Footer>
-                <Button
-                    variant="outline"
-                    on:click={() => (errorDialogOpen = false)}
-                >
-                    Close
-                </Button>
-            </Dialog.Footer>
-        </Dialog.Content>
-    </Dialog.Portal>
-</Dialog.Root> -->

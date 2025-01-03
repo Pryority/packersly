@@ -157,6 +157,9 @@
     resetForm: true,
     dataType: "json",
     invalidateAll: true,
+    onSubmit: async ({ formData, cancel }) => {
+      console.log(formData);
+    },
     onResult: async ({ result, formElement }) => {
       if (result.type === "success") {
         // Close dialog/sheet

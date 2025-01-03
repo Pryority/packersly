@@ -14,8 +14,8 @@
   import Trash from "lucide-svelte/icons/trash";
   import { Separator } from "@components/ui/separator";
   import PlusCircle from "lucide-svelte/icons/plus-circle";
-  import { invalidate } from "$app/navigation";
-  import type { ActionResult, SubmitFunction } from "@sveltejs/kit";
+  import { generateUUID } from "@utils";
+  import { page } from "$app/stores";
 
   let {
     form,
@@ -35,22 +35,47 @@
 
   const { form: formData, enhance, submitting } = form;
 
+  // In UpdateBoxForm.svelte
   function addItem() {
     formData.update(($formData) => ({
       ...$formData,
       items: [
         ...$formData.items,
-        { id: crypto.randomUUID(), name: "", quantity: 1 },
+        { name: "", quantity: 1 }, // No ID for new items
       ],
     }));
   }
 
   function removeItem(index: number) {
-    formData.update(($formData) => ({
-      ...$formData,
-      items: $formData.items.filter((_, i) => i !== index),
-    }));
+    formData.update(($formData) => {
+      const updatedItems = [...$formData.items];
+      updatedItems.splice(index, 1);
+
+      // Ensure at least one item remains
+      if (updatedItems.length === 0) {
+        updatedItems.push({ name: "", quantity: 1 });
+      }
+
+      return {
+        ...$formData,
+        items: updatedItems,
+      };
+    });
   }
+
+  // Initialize form with current box data
+  $effect(() => {
+    if (box?.items) {
+      $formData = {
+        boxId,
+        items: box.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+        })),
+      };
+    }
+  });
 
   $effect(() => {
     if ($formData.items.length === 0) {
@@ -58,18 +83,12 @@
         ...$formData,
         items: [
           ...$formData.items,
-          { id: crypto.randomUUID(), name: "", quantity: 1 },
+          { id: generateUUID(), name: "", quantity: 1 },
         ],
       }));
     }
   });
-  $effect(() => {
-    $formData.items = box.items.map((item) => ({
-      id: item.id, // Make sure id is included
-      name: item.name,
-      quantity: item.quantity,
-    }));
-  });
+
   $effect(() => {
     $formData.boxId = boxId;
   });

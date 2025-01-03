@@ -25,7 +25,7 @@
     downloadQrSchema,
     generateQrSchema,
   } from "@routes/settings/zod";
-  import { cn, downloadBlob } from "@utils";
+  import { cn, downloadBlob, generateUUID } from "@utils";
   import QRCode from "qrcode";
   import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
   import Download from "lucide-svelte/icons/download";
@@ -49,27 +49,107 @@
   let qrCanvases = $state<Record<string, HTMLCanvasElement>>({});
   const availableQrCodes = $derived(data.availableQrCodes);
 
+  // const createBoxForm = superForm(data.createBoxForm, {
+  //   id: "create-box-form",
+  //   validators: zodClient(boxSchema),
+  //   dataType: "json",
+  //   taintedMessage: null,
+  //   timeoutMs: 8000, // Add timeout
+  //   onSubmit: ({ cancel }) => {
+  //     return async ({ result }: { result: ActionResult }) => {
+  //       try {
+  //         if (result.type === "error" || result.type === "failure") {
+  //           cancel();
+  //         } else {
+  //           dialogOpen = false;
+  //           sheetOpen = false;
+  //         }
+  //       } catch (error) {
+  //         cancel();
+  //       }
+  //     };
+  //   },
+  // });
+
   const createBoxForm = superForm(data.createBoxForm, {
     id: "create-box-form",
     validators: zodClient(boxSchema),
     dataType: "json",
     taintedMessage: null,
-    timeoutMs: 8000, // Add timeout
-    onSubmit: ({ cancel }) => {
-      return async ({ result }: { result: ActionResult }) => {
-        try {
-          if (result.type === "error" || result.type === "failure") {
-            cancel();
-          } else {
-            dialogOpen = false;
-            sheetOpen = false;
+    timeoutMs: 8000,
+    onSubmit: ({ formData, cancel }) => {
+      try {
+        // Get items data from FormData and structure it properly
+        const items = [];
+        let i = 0;
+        while (formData.has(`items.${i}.name`)) {
+          const name = (formData.get(`items.${i}.name`) as string).trim();
+          const quantity =
+            parseInt(formData.get(`items.${i}.quantity`) as string) || 1;
+
+          // Only add items with a valid name
+          if (name.length >= 2) {
+            items.push({ name, quantity });
           }
-        } catch (error) {
-          cancel();
+          i++;
         }
-      };
+
+        // Validate items array
+        if (items.length === 0) {
+          throw new Error(
+            "At least one item with 2 or more characters is required",
+          );
+        }
+
+        // Create the submit data WITHOUT boxId - let server generate it
+        const submitData = {
+          items,
+        };
+
+        console.log("Submit Data:", submitData);
+        return { data: submitData };
+      } catch (error) {
+        console.error("Error preparing form data:", error);
+        cancel();
+        return;
+      }
+    },
+    onResult: async ({ result }) => {
+      console.log("Form result:", result);
+
+      if (result.type === "success") {
+        dialogOpen = false;
+        sheetOpen = false;
+
+        const location =
+          result.data?.location || result.data?.form?.message?.location;
+        if (location) {
+          await goto(location);
+        } else {
+          await goto($page.url.pathname, { replaceState: true });
+        }
+      } else {
+        // Show validation errors to user
+        const errors = result.status;
+        console.error("Validation errors:", errors);
+      }
     },
   });
+
+  // Initialize form data with defaults
+  $effect(() => {
+    if ($createBoxFormData && !$createBoxFormData.items?.length) {
+      $createBoxFormData = {
+        items: [{ name: "", quantity: 1 }],
+      };
+    }
+  });
+
+  // const {
+  //   form: createBoxFormData,
+  //   enhance: enhanceCreateBox,
+  //   submitting: creatingBox,
+  // } = createBoxForm;
 
   const generateQrForm = superForm(data.generateQrForm, {
     id: "generate-qr-form",
@@ -123,6 +203,12 @@
     enhance: enhanceDownloadQr,
   } = downloadQrForm;
 
+  const {
+    form: createBoxFormData,
+    submitting: creatingBox,
+    enhance: enhanceCreateBox,
+  } = createBoxForm;
+
   $effect(() => {
     $downloadQrFormData = {
       roomId: data.room.id,
@@ -165,9 +251,7 @@
               <p class="text-sm text-muted-foreground">Available QR Codes</p>
               <p class="text-2xl font-bold">{availableQrCodes || 0}</p>
             </div>
-            <div
-              class="flex max-md:flex-col max-md:w-full items-center gap-4 md:gap-8"
-            >
+            <div class="flex max-md:flex-col items-center gap-4 md:gap-8">
               <form
                 method="POST"
                 action="?/generate-qr"

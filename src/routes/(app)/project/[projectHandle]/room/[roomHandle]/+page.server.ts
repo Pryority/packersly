@@ -10,7 +10,7 @@ import {
 import type { PageServerLoad } from "./$types";
 import { box, item, project, room, qrCode } from "@db/schema";
 import { and, count, eq } from "drizzle-orm";
-import { superValidate } from "sveltekit-superforms";
+import { message, superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import boxSchema from "@routes/settings/zod/boxSchema";
 import PDFDocument from "pdfkit";
@@ -88,6 +88,7 @@ export const actions = {
     if (!locals.user) throw error(401, "Unauthorized");
 
     const form = await superValidate(request, zod(boxSchema));
+    console.log(form);
     if (!form.valid) return fail(400, { form });
 
     const { projectHandle, roomHandle } = params;
@@ -119,6 +120,8 @@ export const actions = {
           ),
         )
         .limit(1);
+
+      console.log("Result", result);
 
       if (!result) {
         return fail(404, { form, message: "Project or room not found" });
@@ -163,11 +166,6 @@ export const actions = {
         isPublic: false,
       };
 
-      // const qrValues = {
-      // 	boxId,
-      // 	url: boxUrl.toString(),
-      // };
-
       const itemValues =
         form.data.items?.map((itemData) => ({
           id: crypto.randomUUID(),
@@ -190,10 +188,11 @@ export const actions = {
         ]);
       });
 
-      throw redirect(303, `${url.pathname}/box/${boxId}`);
+      return message(form, {
+        text: "Created Box!",
+        location: `${url.pathname}/box/${boxId}`,
+      });
     } catch (error) {
-      if (error as Redirect) throw error;
-
       console.error("Box Creation error:", {
         error,
         message: error instanceof Error ? error.message : "Unknown error",
