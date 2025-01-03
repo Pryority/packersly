@@ -291,24 +291,40 @@ export const actions = {
   "delete-project": async ({ locals, params }) => {
     if (!locals.user) throw error(401, "Unauthorized");
     const userId = locals.user.id;
-
     const { projectHandle } = params;
-    if (!projectHandle)
-      return fail(400, { message: "Project handle required" });
 
-    // console.log(projectHandle);
+    if (!projectHandle) {
+      return fail(400, { message: "Project handle required" });
+    }
 
     try {
+      // First verify project exists
+      const existingProject = await db.query.project.findFirst({
+        where: and(
+          eq(project.handle, projectHandle),
+          eq(project.userId, userId),
+        ),
+        columns: {
+          id: true,
+        },
+      });
+
+      if (!existingProject) {
+        return fail(404, { message: "Project not found" });
+      }
+
+      // Project exists and user owns it, safe to delete
       await db
         .delete(project)
         .where(
           and(eq(project.userId, userId), eq(project.handle, projectHandle)),
         );
+
       throw redirect(303, "/dashboard");
-    } catch (error) {
-      if (error as Redirect) throw error;
-      console.error("Project Delete error:", error);
-      return fail(500, { error: "Delete failed" });
+    } catch (err) {
+      if (err as Redirect) throw err;
+      console.error("Project Delete error:", err);
+      return fail(500, { message: "Failed to delete project" });
     }
   },
 } satisfies Actions;
