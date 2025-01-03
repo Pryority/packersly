@@ -246,17 +246,19 @@
         class="bg-secondary p-4 rounded-lg flex flex-col items-center justify-between gap-4"
       >
         <div class="flex flex-col w-full gap-4">
-          <div class="flex max-md:flex-col items-center justify-between">
-            <div class="max-md:mb-2 max-md:text-center">
+          <div class="flex max-lg:flex-col items-center justify-between">
+            <div class="max-lg:mb-2 max-lg:text-center">
               <p class="text-sm text-muted-foreground">Available QR Codes</p>
               <p class="text-2xl font-bold">{availableQrCodes || 0}</p>
             </div>
-            <div class="flex max-md:flex-col items-center gap-4 md:gap-8">
+            <div
+              class="flex max-lg:flex-col max-lg:w-full items-center gap-4 lg:gap-8"
+            >
               <form
                 method="POST"
                 action="?/generate-qr"
                 use:enhanceGenerateQr
-                class="flex max-md:flex-col gap-2 max-md:w-full"
+                class="flex max-lg:flex-col gap-2 max-lg:w-full"
               >
                 <input type="hidden" name="roomId" value={data.room.id} />
                 <input
@@ -309,14 +311,15 @@
               <form
                 method="POST"
                 action="?/download-all-generated"
-                class="w-full md:w-fit"
+                class="max-lg:w-full"
                 use:enhanceDownloadQr
               >
                 <input type="hidden" name="roomId" value={data.room.id} />
                 <Button
                   type="submit"
+                  variant="outline"
                   disabled={$downloadingQr || availableQrCodes === 0}
-                  class="relative w-full"
+                  class="relative w-full bg-secondary-foreground text-secondary"
                 >
                   <div class="grid place-items-center w-full h-full">
                     <div class="flex items-center gap-2">
@@ -466,10 +469,10 @@
   type="button"
   on:click={openForm}
   disabled={availableQrCodes === 0}
-  class="sticky bottom-2 mx-8 md:mx-[40vw] flex items-center gap-2"
+  class="sticky bottom-2 mx-8 md:mx-[33vw] lg:mx-[40vw] flex items-center gap-2"
 >
   Create a Box
-  <PlusCircle size={16} />
+  <PlusCircle class="min-w-4 max-w-4 aspect-square" />
 </Button>
 
 <Dialog.Root bind:open={dialogOpen} onOpenChange={(isOpen) => !isOpen}>
