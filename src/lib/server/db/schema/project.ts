@@ -3,7 +3,6 @@ import {
   text,
   timestamp,
   uuid,
-  integer,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
