@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
 import { box, qrCode, item } from "../db/schema";
-import db from "../db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 // Migration to fix inconsistent box states
-export async function fixBoxStates() {
+export async function fixBoxStates(
+  db: NodePgDatabase<typeof import("../db/schema")>,
+) {
   try {
     // Find all boxes that have items but are marked as unassigned
     const inconsistentBoxes = await db.query.box.findMany({
@@ -79,7 +81,9 @@ export async function fixBoxStates() {
 }
 
 // Prevention: Add a trigger or constraint to prevent future inconsistencies
-export async function addConsistencyConstraints() {
+export async function addConsistencyConstraints(
+  db: NodePgDatabase<typeof import("../db/schema")>,
+) {
   await db.execute(sql`
     CREATE OR REPLACE FUNCTION check_box_assignment()
     RETURNS TRIGGER AS $$

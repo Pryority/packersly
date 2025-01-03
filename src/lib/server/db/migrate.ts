@@ -24,9 +24,11 @@ async function runMigrations() {
     await migrate(db, { migrationsFolder: "drizzle" });
     console.log("Migrations completed");
 
-    // Then run the fixes
-    await fixBoxStates();
-    await addConsistencyConstraints();
+    // Then run the fixes with the same db connection
+    await fixBoxStates(db);
+    await addConsistencyConstraints(db);
+
+    console.log("Data fixes and constraints added successfully");
   } catch (error) {
     console.error("Migration error:", error);
     throw error;
