@@ -71,6 +71,29 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     throw error(404, "Box not found");
   }
 
+  // Check for inconsistent state - box has items but no assigned QR code
+  if (BOX.items.length > 0 && (!BOX.qrCode || !BOX.qrCode.isAssigned)) {
+    // Auto-fix the state by creating and assigning a QR code
+    if (!BOX.room?.id) {
+      throw error(500, "Box is in an invalid state: no room assigned");
+    }
+
+    const [newQrCode] = await db
+      .insert(qrCode)
+      .values({
+        roomId: BOX.room.id,
+        url: `/box/${BOX.id}`,
+        id: crypto.randomUUID(),
+        boxId: BOX.id,
+        isAssigned: true,
+        isPreGenerated: false,
+      })
+      .returning();
+
+    // Update the box object with the new QR code
+    BOX.qrCode = newQrCode;
+  }
+
   // Get access token from query parameter if it exists
   const accessToken = url.searchParams.get("token");
 

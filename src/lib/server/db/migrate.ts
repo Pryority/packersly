@@ -3,6 +3,10 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import * as schema from "./schema";
 import env from "../../env";
 import pkg from "pg";
+import {
+  addConsistencyConstraints,
+  fixBoxStates,
+} from "./fix-box-state-migration";
 const { Pool } = pkg;
 
 async function runMigrations() {
@@ -16,6 +20,8 @@ async function runMigrations() {
 
   try {
     const db = drizzle(migrationPool, { schema });
+    await fixBoxStates();
+    await addConsistencyConstraints();
     await migrate(db, { migrationsFolder: "drizzle" });
     console.log("Migrations completed");
   } catch (error) {
