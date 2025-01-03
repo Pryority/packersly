@@ -131,34 +131,52 @@
   </Breadcrumb.Root>
   <UserNav {user} />
 </header>
-
-<div class="md:hidden px-4 py-2 border-b bg-background">
-  <Breadcrumb.Root>
-    <Breadcrumb.List class="flex flex-wrap items-center gap-1 text-sm">
-      {#each breadcrumbs as crumb, i}
-        <Breadcrumb.Item>
-          {#if i === breadcrumbs.length - 1}
-            <Breadcrumb.Page
-              class={breadcrumbs.length > 1
-                ? "truncate max-w-[16vw]"
-                : "truncate"}
-            >
-              {crumb.label}
-            </Breadcrumb.Page>
-          {:else}
-            <Breadcrumb.Link
-              href={crumb.href}
-              class="truncate max-w-[16vw]"
-              data-sveltekit-preload-data="hover"
-            >
-              {crumb.label}
-            </Breadcrumb.Link>
+{#if breadcrumbs.length > 1}
+  <div class="md:hidden px-4 py-2 border-b bg-background">
+    <Breadcrumb.Root>
+      <Breadcrumb.List class="flex flex-wrap items-center gap-1 text-sm">
+        {#each breadcrumbs as crumb, i}
+          <Breadcrumb.Item>
+            {#if i === 0}
+              <!-- Dashboard - always untruncated and linked -->
+              <Breadcrumb.Link
+                href={crumb.href}
+                class="truncate"
+                data-sveltekit-preload-data="hover"
+              >
+                {crumb.label}
+              </Breadcrumb.Link>
+            {:else if i === breadcrumbs.length - 1 && crumb.href.includes("/box/")}
+              <!-- Box page - truncated -->
+              <Breadcrumb.Page class="truncate max-w-[16vw]">
+                {crumb.label}
+              </Breadcrumb.Page>
+            {:else if i === breadcrumbs.length - 1 && crumb.href.includes("/room/")}
+              <!-- Room page - only project and room truncated -->
+              <Breadcrumb.Page
+                class={i > 1 ? "truncate max-w-[16vw]" : "truncate"}
+              >
+                {crumb.label}
+              </Breadcrumb.Page>
+            {:else}
+              <!-- All other links - conditionally truncated -->
+              <Breadcrumb.Link
+                href={crumb.href}
+                class={breadcrumbs.some((b) => b.href.includes("/box/")) ||
+                (crumb.href.includes("/room/") && i > 1)
+                  ? "truncate max-w-[16vw]"
+                  : "truncate"}
+                data-sveltekit-preload-data="hover"
+              >
+                {crumb.label}
+              </Breadcrumb.Link>
+            {/if}
+          </Breadcrumb.Item>
+          {#if i < breadcrumbs.length - 1}
+            <Breadcrumb.Separator class="mx-1" />
           {/if}
-        </Breadcrumb.Item>
-        {#if i < breadcrumbs.length - 1}
-          <Breadcrumb.Separator class="mx-1" />
-        {/if}
-      {/each}
-    </Breadcrumb.List>
-  </Breadcrumb.Root>
-</div>
+        {/each}
+      </Breadcrumb.List>
+    </Breadcrumb.Root>
+  </div>
+{/if}
