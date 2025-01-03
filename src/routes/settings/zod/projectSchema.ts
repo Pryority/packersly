@@ -15,6 +15,7 @@ const projectSchema = z.object({
     .string()
     .min(5, "New address is too short")
     .max(100, "New address is too long"),
+  status: z.enum(["draft", "active", "completed"]).default("draft"),
   rooms: z
     .array(roomSchema)
     .min(1, "At least one room is required")

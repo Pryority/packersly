@@ -242,6 +242,8 @@ export const actions = {
             handle: uniqueHandle,
             fromAddress: form.data.fromAddress,
             toAddress: form.data.toAddress,
+            status: form.data.status,
+            updatedAt: new Date(),
           })
           .where(eq(project.id, existingProject.id))
           .returning(); // Add this to see what was updated

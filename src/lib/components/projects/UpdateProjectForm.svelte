@@ -2,6 +2,7 @@
 <script lang="ts">
   import * as Card from "@components/ui/card";
   import * as Form from "@components/ui/form";
+  import * as Tabs from "@components/ui/tabs";
   import { Button } from "@components/ui/button";
   import { Input } from "@components/ui/input";
   import Label from "@components/ui/label/label.svelte";
@@ -26,6 +27,15 @@
   } = $props();
 
   const { form: formData, enhance, submitting } = form;
+  const statusOptions = [
+    {
+      value: "draft",
+      label: "Draft",
+      description: "Project is in planning phase",
+    },
+    { value: "active", label: "Active", description: "Currently moving" },
+    { value: "completed", label: "Completed", description: "Move completed" },
+  ];
 
   function addRoom() {
     formData.update(($formData) => ({
@@ -41,6 +51,13 @@
     formData.update(($formData) => ({
       ...$formData,
       rooms: $formData.rooms.filter((_, i) => i !== index),
+    }));
+  }
+
+  function handleStatusChange(value: string | undefined) {
+    formData.update(($formData) => ({
+      ...$formData,
+      status: value as "draft" | "active" | "completed",
     }));
   }
 
@@ -78,6 +95,33 @@
           </span>
           <span class="block md:hidden"> Update project name </span>
         </Form.Description>
+        <Form.FieldErrors class="max-md:text-xs" />
+      </Form.Field>
+
+      <Form.Field {form} name="status">
+        <Form.Control let:attrs>
+          <Form.Label>Project Status</Form.Label>
+          <Tabs.Root
+            value={$formData.status}
+            onValueChange={handleStatusChange}
+            class="w-full"
+          >
+            <Tabs.List class="grid grid-cols-3 w-full">
+              {#each statusOptions as option}
+                <Tabs.Trigger
+                  value={option.value}
+                  class="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  {option.label}
+                </Tabs.Trigger>
+              {/each}
+            </Tabs.List>
+          </Tabs.Root>
+          <Form.Description>
+            {statusOptions.find((opt) => opt.value === $formData.status)
+              ?.description}
+          </Form.Description>
+        </Form.Control>
         <Form.FieldErrors class="max-md:text-xs" />
       </Form.Field>
 
