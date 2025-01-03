@@ -7,49 +7,56 @@ export async function fixBoxStates() {
   try {
     // Find all boxes that have items but are marked as unassigned
     const inconsistentBoxes = await db.query.box.findMany({
-      where: sql`${box.id} IN (
-        SELECT DISTINCT ${item.boxId}
-        FROM ${item}
-        WHERE ${item.boxId} NOT IN (
-          SELECT ${qrCode.boxId}
-          FROM ${qrCode}
-          WHERE ${qrCode.isAssigned} = true
+      where: sql`EXISTS (
+        SELECT 1 FROM ${item}
+        WHERE ${item.boxId} = ${box.id}
+        AND NOT EXISTS (
+          SELECT 1 FROM ${qrCode}
+          WHERE ${qrCode.boxId} = ${box.id}
+          AND ${qrCode.isAssigned} = true
         )
       )`,
       with: {
         items: true,
+        room: true,
       },
     });
 
+    console.log(`Found ${inconsistentBoxes.length} inconsistent boxes`);
+
     // Process each inconsistent box
     await db.transaction(async (tx) => {
-      for (const box of inconsistentBoxes) {
+      for (const boxItem of inconsistentBoxes) {
+        console.log(`Processing box ${boxItem.id}`);
+
         // Create a new QR code for this box if none exists
         const existingQr = await tx.query.qrCode.findFirst({
-          where: sql`${qrCode.url} LIKE ${"%/box/" + box.id + "%"}`,
+          where: sql`${qrCode.url} LIKE ${"%/box/" + boxItem.id + "%"}`,
         });
 
         if (existingQr) {
+          console.log(`Updating existing QR code for box ${boxItem.id}`);
           // Update existing QR code
           await tx
             .update(qrCode)
             .set({
-              boxId: box.id,
+              boxId: boxItem.id,
               isAssigned: true,
             })
             .where(sql`${qrCode.id} = ${existingQr.id}`);
         } else {
-          // Create new QR code
+          console.log(`Creating new QR code for box ${boxItem.id}`);
           // Ensure box has a roomId before creating QR code
-          if (!box.roomId) {
-            throw new Error(`Box ${box.id} has no roomId`);
+          if (!boxItem.room?.id) {
+            console.error(`Box ${boxItem.id} has no roomId`);
+            continue;
           }
 
           await tx.insert(qrCode).values({
-            roomId: box.roomId,
-            url: `/box/${box.id}`,
+            roomId: boxItem.room.id,
+            url: `/box/${boxItem.id}`,
             id: crypto.randomUUID(),
-            boxId: box.id,
+            boxId: boxItem.id,
             isAssigned: true,
             isPreGenerated: false,
           });
@@ -79,10 +86,10 @@ export async function addConsistencyConstraints() {
     BEGIN
       -- If there are items, ensure there's an assigned QR code
       IF EXISTS (
-        SELECT 1 FROM ${item} WHERE boxId = NEW.id
+        SELECT 1 FROM ${item} WHERE ${item.boxId} = NEW.id
       ) AND NOT EXISTS (
         SELECT 1 FROM ${qrCode}
-        WHERE boxId = NEW.id AND isAssigned = true
+        WHERE ${qrCode.boxId} = NEW.id AND ${qrCode.isAssigned} = true
       ) THEN
         RAISE EXCEPTION 'Box must have an assigned QR code if it contains items';
       END IF;

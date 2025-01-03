@@ -20,10 +20,13 @@ async function runMigrations() {
 
   try {
     const db = drizzle(migrationPool, { schema });
-    await fixBoxStates();
-    await addConsistencyConstraints();
+    // Run migrations first
     await migrate(db, { migrationsFolder: "drizzle" });
     console.log("Migrations completed");
+
+    // Then run the fixes
+    await fixBoxStates();
+    await addConsistencyConstraints();
   } catch (error) {
     console.error("Migration error:", error);
     throw error;
