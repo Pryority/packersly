@@ -401,6 +401,91 @@ export const actions = {
       return fail(500, { form, message: "Failed to update room" });
     }
   },
+  "delete-room": async ({ locals, params }) => {
+    if (!locals.user) throw error(401, "Unauthorized");
+    const userId = locals.user.id;
+    const { projectHandle, roomHandle } = params;
+
+    if (!projectHandle || !roomHandle) {
+      return fail(400, { message: "Project and room handles required" });
+    }
+
+    try {
+      await db.transaction(async (tx) => {
+        // First verify project exists and user owns it
+        const existingProject = await tx.query.project.findFirst({
+          where: and(
+            eq(project.handle, projectHandle),
+            eq(project.userId, userId),
+          ),
+          columns: { id: true },
+        });
+
+        if (!existingProject) {
+          throw error(404, "Project not found or not owned by user");
+        }
+
+        // Find the room
+        const existingRoom = await tx.query.room.findFirst({
+          where: and(
+            eq(room.handle, roomHandle),
+            eq(room.projectId, existingProject.id),
+          ),
+          columns: { id: true },
+          with: {
+            boxes: {
+              columns: { id: true },
+            },
+          },
+        });
+
+        if (!existingRoom) {
+          throw error(404, "Room not found");
+        }
+
+        // Get box IDs for cleanup
+        const boxIds = existingRoom.boxes.map((b) => b.id);
+
+        if (boxIds.length > 0) {
+          // Clean up items
+          await tx.delete(item).where(inArray(item.boxId, boxIds));
+
+          // Update QR codes to unassigned
+          await tx
+            .update(qrCode)
+            .set({
+              boxId: null,
+              isAssigned: false,
+            })
+            .where(inArray(qrCode.boxId, boxIds));
+
+          // Delete boxes
+          await tx.delete(box).where(inArray(box.id, boxIds));
+        }
+
+        // Delete unassigned QR codes for this room
+        await tx
+          .delete(qrCode)
+          .where(
+            and(
+              eq(qrCode.roomId, existingRoom.id),
+              eq(qrCode.isAssigned, false),
+            ),
+          );
+
+        // Finally delete the room
+        await tx.delete(room).where(eq(room.id, existingRoom.id));
+      });
+
+      // Redirect back to project page
+      throw redirect(303, `/project/${projectHandle}`);
+    } catch (err) {
+      if (err as Redirect) throw err;
+
+      console.error("Room Delete error:", err);
+      return fail(500, { message: "Failed to delete room" });
+    }
+  },
   "generate-qr": async ({ locals, request }) => {
     if (!locals.user) throw error(401);
     const form = await superValidate(request, zod(generateQrSchema));
