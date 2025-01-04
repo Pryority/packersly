@@ -274,41 +274,11 @@
 </script>
 
 <Card.Root class="m-4">
-  <Card.Header class="flex flex-row items-center justify-between w-full">
-    <div class="flex flex-col gap-1 w-fit">
-      <Card.Title>QR Code Management</Card.Title>
-      <Card.Description
-        >Generate and print QR codes for your boxes</Card.Description
-      >
-    </div>
-
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild let:builder>
-        <Button
-          builders={[builder]}
-          size="icon"
-          variant="outline"
-          class="h-8 w-8 md:h-10 md:w-10"
-        >
-          <EllipsisVertical class="h-4 w-4" />
-          <span class="sr-only">Open menu</span>
-        </Button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end">
-        <DropdownMenu.Item on:click={openUpdateForm}>
-          Edit Room
-        </DropdownMenu.Item>
-        <DropdownMenu.Separator />
-        <form method="POST" action="?/delete-room">
-          <input type="hidden" value={data.room.handle} />
-          <button type="submit" class="w-full">
-            <DropdownMenu.Item class="text-destructive focus:text-destructive">
-              Delete Room
-            </DropdownMenu.Item>
-          </button>
-        </form>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+  <Card.Header>
+    <Card.Title>QR Code Management</Card.Title>
+    <Card.Description
+      >Generate and print QR codes for your boxes</Card.Description
+    >
   </Card.Header>
 
   <Card.Content>
@@ -438,15 +408,43 @@
 </Card.Root>
 <Card.Root class="m-4">
   <Card.Header
-    class={cn(data.room.boxes && data.room.boxes.length === 0 ? "pb-4" : "")}
+    class={cn(
+      "flex flex-row items-center justify-between w-full",
+      data.room.boxes && data.room.boxes.length === 0 ? "pb-4" : "",
+    )}
   >
-    <Card.Title>{data.room.name}</Card.Title>
-    <Card.Description
-      >Manage boxes in this room.
-      {#if data.room.boxes.length > 0}
-        <br />Click on a row in the table to view the box.
-      {/if}</Card.Description
-    >
+    <div class="flex flex-col gap-1 w-fit">
+      <Card.Title>{data.room.name}</Card.Title>
+      <Card.Description>Manage boxes in this room.</Card.Description>
+    </div>
+
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild let:builder>
+        <Button
+          builders={[builder]}
+          size="icon"
+          variant="outline"
+          class="h-8 w-8 md:h-10 md:w-10"
+        >
+          <EllipsisVertical class="h-4 w-4" />
+          <span class="sr-only">Open menu</span>
+        </Button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content align="end">
+        <DropdownMenu.Item on:click={openUpdateForm}>
+          Edit Room
+        </DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <form method="POST" action="?/delete-room">
+          <input type="hidden" value={data.room.handle} />
+          <button type="submit" class="w-full">
+            <DropdownMenu.Item class="text-destructive focus:text-destructive">
+              Delete Room
+            </DropdownMenu.Item>
+          </button>
+        </form>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   </Card.Header>
   {#if data.room.boxes && data.room.boxes.length > 0}
     <Card.Content>
