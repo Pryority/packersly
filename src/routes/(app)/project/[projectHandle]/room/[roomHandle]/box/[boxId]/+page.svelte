@@ -10,7 +10,7 @@
   import EllipsisVertical from "lucide-svelte/icons/ellipsis-vertical";
   import * as Table from "@components/ui/table/index.js";
   import * as Form from "@components/ui/form";
-  import type { Box } from "@db/schema/box";
+  import type { Box, Item } from "@db/schema";
   import {
     boxSchema,
     downloadQrSchema,
@@ -45,17 +45,7 @@
 
   const { data } = $props<{
     data: {
-      box: Box & {
-        items: Array<
-          {
-            id: string;
-            name: string;
-            quantity: number;
-          } & {
-            qrCode: { id: string; url: string };
-          }
-        >;
-      };
+      box: Box;
       qrCode?: {
         id: string;
         url: string;
@@ -138,13 +128,62 @@
       }
     },
     onResult: async ({ result, formElement }) => {
-      if (result.type === "success") {
+      if (result.type === "success" && result.data) {
         // Close dialog/sheet
         createDialogOpen = false;
         createSheetOpen = false;
 
         // Reset form
         formElement.reset();
+
+        if (!box && data.qrCode) {
+          // Box is currently unassigned, create new box data
+          box = {
+            id: boxId,
+            roomId: data.qrCode.room.id,
+            items: [
+              {
+                id: result.data.id,
+                name: result.data.name,
+                quantity: result.data.quantity,
+                boxId: boxId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+            room: {
+              id: data.qrCode.room.id,
+              colorCode: data.qrCode.room.colorCode,
+            },
+            qrCode: {
+              ...data.qrCode,
+              boxId: boxId,
+              isAssigned: true,
+            },
+          };
+        } else if (box) {
+          // Box exists, update items
+          const existingItemIndex = box.items.findIndex(
+            (item: Item) => item.name === result.data?.name,
+          );
+          if (existingItemIndex !== -1) {
+            // Update existing item quantity
+            box.items[existingItemIndex].quantity += result.data.quantity;
+          } else {
+            // Add new item
+            box.items = [
+              ...box.items,
+              {
+                id: result.data.id,
+                name: result.data.name,
+                quantity: result.data.quantity,
+                boxId: box.id,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ];
+          }
+        }
       } else if (result.type === "error") {
         console.log("CREATE ITEM FAILED", result.error);
       }
