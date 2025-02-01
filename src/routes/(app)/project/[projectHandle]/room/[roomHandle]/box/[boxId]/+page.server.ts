@@ -137,8 +137,7 @@ export const actions = {
     }
 
     try {
-      const { projectHandle, roomHandle, id: boxId } = params;
-      console.log(params);
+      const { projectHandle, roomHandle, boxId } = params;
       if (!projectHandle || !roomHandle || !boxId) {
         return fail(400, {
           form,

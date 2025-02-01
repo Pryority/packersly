@@ -33,7 +33,6 @@
   import UpdateBoxDialog from "@components/projects/UpdateBoxDialog.svelte";
   import UpdateBoxSheet from "@components/projects/UpdateBoxSheet.svelte";
   import type { z } from "zod";
-  import { invalidate } from "$app/navigation";
 
   let qrCanvas = $state<HTMLCanvasElement>();
   let createDialogOpen = $state(false);
@@ -123,7 +122,6 @@
     invalidateAll: true,
     onSubmit: async ({ formData, cancel }) => {
       const itemName = formData.get("name");
-      console.log(itemName);
       // Check if item exists
       const response = await fetch(
         `/api/box/${boxId}/items/check?name=${itemName}`,
@@ -147,6 +145,8 @@
 
         // Reset form
         formElement.reset();
+      } else if (result.type === "error") {
+        console.log("CREATE ITEM FAILED", result.error);
       }
     },
   });
